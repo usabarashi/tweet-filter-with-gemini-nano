@@ -1,6 +1,7 @@
 import type { GeminiAvailability } from '../types/gemini';
 import type { MediaData } from '../types/tweet';
 import type { OutputLanguage } from '../types/storage';
+import { logger } from './logger';
 
 class GeminiNanoService {
   private session: LanguageModelSession | null = null;
@@ -96,7 +97,7 @@ class GeminiNanoService {
       return true;
 
     } catch (error) {
-      console.error('[Tweet Filter] Failed to initialize:', error);
+      logger.error('[Tweet Filter] Failed to initialize:', error);
       this.createSessionResult = null;
       return false;
     }
@@ -120,7 +121,7 @@ class GeminiNanoService {
       return await response.blob();
     } catch (error) {
       clearTimeout(timeout);
-      console.error('[Tweet Filter] Failed to fetch image:', error);
+      logger.error('[Tweet Filter] Failed to fetch image:', error);
       return null;
     }
   }
@@ -129,7 +130,7 @@ class GeminiNanoService {
     const session = this.ensureSession();
 
     if (!this.supportsMultimodal) {
-      console.warn('[Tweet Filter] Multimodal not supported, skipping image description');
+      logger.warn('[Tweet Filter] Multimodal not supported, skipping image description');
       return [];
     }
 
@@ -139,7 +140,7 @@ class GeminiNanoService {
       try {
         const blob = await this.fetchImageAsBlob(item.url);
         if (!blob) {
-          console.warn('[Tweet Filter] Failed to fetch image, skipping');
+          logger.warn('[Tweet Filter] Failed to fetch image, skipping');
           continue;
         }
 
@@ -154,7 +155,7 @@ class GeminiNanoService {
         ]);
         descriptions.push(response.trim());
       } catch (error) {
-        console.error('[Tweet Filter] Failed to describe image:', error);
+        logger.error('[Tweet Filter] Failed to describe image:', error);
       }
     }
 
@@ -189,7 +190,7 @@ Response (JSON only):`;
         return true;
       }
     } catch (error) {
-      console.error('[Tweet Filter] Failed to evaluate text:', error);
+      logger.error('[Tweet Filter] Failed to evaluate text:', error);
       return true;
     }
   }

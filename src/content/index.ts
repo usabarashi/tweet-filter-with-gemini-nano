@@ -2,10 +2,14 @@ import { tweetObserver } from './tweetObserver';
 import { tweetFilter } from './tweetFilter';
 import { storage } from '../shared/storage';
 import { geminiNano } from '../shared/geminiNano';
+import { logger } from '../shared/logger';
 import type { TweetData } from '../types/tweet';
 import './styles.css';
 
 async function main(): Promise<void> {
+  // Initialize logger first
+  await logger.initialize();
+
   const config = await storage.getFilterConfig();
 
   if (!config.enabled) {
@@ -41,7 +45,7 @@ async function main(): Promise<void> {
   let currentUrl = location.href;
   const checkUrlChange = () => {
     if (location.href !== currentUrl) {
-      console.log('[Tweet Filter] 🔄 Page navigation detected:', currentUrl, '→', location.href);
+      logger.log('[Tweet Filter] 🔄 Page navigation detected:', currentUrl, '→', location.href);
       currentUrl = location.href;
 
       // Restart observer to ensure it's monitoring the current page
