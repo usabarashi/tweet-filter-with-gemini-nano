@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tweet Filter with Gemini Nano</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tweet Filter with Gemini Nano</h1>
+      <p class="subtitle">Filter tweets with Gemini Nano AI based on your prompt</p>
+    </header>
+
+    <!-- Filter Section -->
+    <div class="form-section">
+      <div class="form-group">
+        <label class="switch-label">
+          <span>Enable Tweet Filter</span>
+          <label class="switch">
+            <input type="checkbox" id="enabled" checked>
+            <span class="slider"></span>
+          </label>
+        </label>
+      </div>
+
+      <!-- Filter Prompt Input -->
+      <div class="form-group">
+        <label for="prompt">Filter Prompt:</label>
+        <textarea
+          id="prompt"
+          rows="6"
+          placeholder="technical content, programming and development, AI/ML research"
+        ></textarea>
+        <p class="hint">
+          Enter the criteria for tweets you want to <strong>see</strong>.
+          Tweets that match this criteria will be shown, others will be hidden.
+          <br>
+          Example: "technical content, programming and development, AI/ML research"
+        </p>
+      </div>
+
+      <!-- Output Language -->
+      <div class="form-group">
+        <label for="output-language">Output Language:</label>
+        <select id="output-language" class="select-input">
+          <option value="en">English</option>
+          <option value="ja">日本語 (Japanese)</option>
+          <option value="es">Español (Spanish)</option>
+        </select>
+        <p class="hint">
+          Language for AI model responses. This ensures optimal output quality and safety.
+        </p>
+      </div>
+
+      <!-- Console Logs -->
+      <div class="form-group">
+        <label class="switch-label">
+          <span>Enable console logs</span>
+          <label class="switch">
+            <input type="checkbox" id="show-stats">
+            <span class="slider"></span>
+          </label>
+        </label>
+      </div>
+    </div>
+
+      <div class="button-group">
+        <button id="save-btn" class="primary">Save Settings</button>
+        <button id="reset-btn" class="secondary">Reset to Default</button>
+      </div>
+
+    <!-- Model Section -->
+    <div class="status-section">
+      <!-- Gemini Nano API Requirements -->
+      <div class="requirements-box">
+        <p><strong>Requirements:</strong></p>
+        <p><span>Chrome 131+ with the following flags enabled:</span> <a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noopener noreferrer" class="doc-link" aria-label="Official Documentation"></a></p>
+
+        <div class="flag-item">
+          <div class="flag-info">
+            <div class="flag-name">Prompt API for Gemini Nano</div>
+            <div class="flag-url">chrome://flags/#prompt-api-for-gemini-nano</div>
+          </div>
+          <button class="copy-btn" data-url="chrome://flags/#prompt-api-for-gemini-nano" aria-label="Copy URL"></button>
+        </div>
+
+        <div class="flag-item">
+          <div class="flag-info">
+            <div class="flag-name">Prompt API with Multimodal Input</div>
+            <div class="flag-url">chrome://flags/#prompt-api-for-gemini-nano-multimodal-input</div>
+          </div>
+          <button class="copy-btn" data-url="chrome://flags/#prompt-api-for-gemini-nano-multimodal-input" aria-label="Copy URL"></button>
+        </div>
+
+        <div class="flag-item">
+          <div class="flag-info">
+            <div class="flag-name">Optimization Guide On Device Model</div>
+            <div class="flag-url">chrome://flags/#optimization-guide-on-device-model</div>
+          </div>
+          <button class="copy-btn" data-url="chrome://flags/#optimization-guide-on-device-model" aria-label="Copy URL"></button>
+        </div>
+      </div>
+
+      <div class="api-status-box">
+        <h3 class="api-status-title">API Status</h3>
+        <ul class="api-status-list">
+          <li id="text-availability">LanguageModel.availability(text): null</li>
+          <li id="multimodal-availability">LanguageModel.availability(multimodal): null</li>
+          <li id="create-session-status">LanguageModel.create: null</li>
+        </ul>
+      </div>
+
+      <!-- Model Status / Download Button -->
+      <button id="init-gemini-btn" class="init-gemini-btn" disabled>
+        Checking...
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="save-status" class="save-status"></div>
+
+  <script type="module" src="index.ts"></script>
+</body>
+</html>
