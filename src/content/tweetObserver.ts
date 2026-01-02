@@ -1,5 +1,6 @@
 import type { TweetData, MediaData } from '../types/tweet';
 import { TWEET_SELECTORS } from '../shared/constants';
+import { logger } from '../shared/logger';
 
 type TweetCallback = (tweet: TweetData) => void;
 
@@ -87,7 +88,7 @@ class TweetObserver {
       repostedBy: repostInfo.repostedBy,
     };
 
-    console.log('[Tweet Filter] 🔍 Detected tweet:', {
+    logger.log('[Tweet Filter] 🔍 Detected tweet:', {
       id: tweetId,
       author: tweetData.author,
       text: tweetData.textContent.substring(0, 50) + '...',

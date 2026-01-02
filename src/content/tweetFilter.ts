@@ -4,6 +4,7 @@ import { geminiNano } from '../shared/geminiNano';
 import { domManipulator } from './domManipulator';
 import { PROCESSING_CONFIG } from '../shared/constants';
 import { storage } from '../shared/storage';
+import { logger } from '../shared/logger';
 
 class TweetFilter {
   private processingQueue: TweetData[] = [];
@@ -15,7 +16,7 @@ class TweetFilter {
   async initialize(prompt: string, outputLanguage: OutputLanguage = 'en'): Promise<boolean> {
     const success = await geminiNano.initialize(prompt, false, undefined, outputLanguage);
     if (!success) {
-      console.warn('[Tweet Filter] Failed to initialize Gemini Nano');
+      logger.warn('[Tweet Filter] Failed to initialize Gemini Nano');
     }
     return success;
   }
@@ -27,7 +28,7 @@ class TweetFilter {
                        tweet.quotedTweet;
 
     if (!hasContent) {
-      console.log('[Tweet Filter] ⏭️ Skipping completely empty tweet');
+      logger.log('[Tweet Filter] ⏭️ Skipping completely empty tweet');
       domManipulator.markAsProcessed(tweet.element);
       return;
     }
@@ -40,7 +41,7 @@ class TweetFilter {
     // Check cache for previously evaluated tweets
     if (this.evaluationCache.has(tweet.id)) {
       const shouldShow = this.evaluationCache.get(tweet.id)!;
-      console.log('[Tweet Filter] 💾 Using cached result for tweet:', tweet.id, '- shouldShow:', shouldShow);
+      logger.log('[Tweet Filter] 💾 Using cached result for tweet:', tweet.id, '- shouldShow:', shouldShow);
       if (!shouldShow) {
         domManipulator.collapseTweet(tweet.element);
       }
@@ -67,7 +68,7 @@ class TweetFilter {
           quotaInfo &&
           quotaInfo.usage >= quotaInfo.quota * PROCESSING_CONFIG.QUOTA_WARNING_THRESHOLD
         ) {
-          console.warn(
+          logger.warn(
             '[Tweet Filter] Approaching quota limit:',
             quotaInfo.usage,
             '/',
@@ -83,12 +84,12 @@ class TweetFilter {
           const success = await geminiNano.initialize(config.prompt, false, undefined, config.outputLanguage);
 
           if (!success) {
-            console.error('[Tweet Filter] Failed to reinitialize session');
+            logger.error('[Tweet Filter] Failed to reinitialize session');
             domManipulator.markAsProcessed(tweet.element);
             continue;
           }
 
-          console.log('[Tweet Filter] ✓ Session reinitialized successfully');
+          logger.log('[Tweet Filter] ✓ Session reinitialized successfully');
         }
 
         // Evaluate text and images with short-circuit evaluation
@@ -131,7 +132,7 @@ class TweetFilter {
         // If no content at all, show by default
         const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
         if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
-          console.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
+          logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
           domManipulator.markAsProcessed(tweet.element);
           continue;
         }
@@ -140,15 +141,15 @@ class TweetFilter {
         this.addToCache(tweet.id, shouldShow);
 
         if (!shouldShow) {
-          console.log('[Tweet Filter] 🙈 Collapsing tweet');
+          logger.log('[Tweet Filter] 🙈 Collapsing tweet');
           domManipulator.collapseTweet(tweet.element);
         } else {
-          console.log('[Tweet Filter] 👀 Showing tweet');
+          logger.log('[Tweet Filter] 👀 Showing tweet');
         }
 
         domManipulator.markAsProcessed(tweet.element);
       } catch (error) {
-        console.error('[Tweet Filter] Failed to evaluate tweet:', error);
+        logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
         // On error, show the tweet by default
         domManipulator.markAsProcessed(tweet.element);
       }
