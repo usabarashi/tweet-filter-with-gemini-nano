@@ -47,15 +47,7 @@ class GeminiNanoService {
       this.currentOutputLanguage = outputLanguage;
 
       // Destroy old base session if exists
-      if (this.baseSession) {
-        try {
-          await this.baseSession.destroy();
-        } catch (error) {
-          logger.error('[Tweet Filter] Failed to destroy old base session:', error);
-        } finally {
-          this.baseSession = null;
-        }
-      }
+      await this._destroyBaseSession();
 
       // Helper function to create session with given options
       const createSession = async (expectedInputs: Array<{ type: string }>) => {
@@ -131,6 +123,18 @@ class GeminiNanoService {
       throw new Error('Base session not initialized');
     }
     return this.baseSession;
+  }
+
+  private async _destroyBaseSession(): Promise<void> {
+    if (this.baseSession) {
+      try {
+        await this.baseSession.destroy();
+      } catch (error) {
+        logger.error('[Tweet Filter] Failed to destroy base session:', error);
+      } finally {
+        this.baseSession = null;
+      }
+    }
   }
 
   async createClonedSession(): Promise<LanguageModelSession> {
@@ -220,15 +224,7 @@ Response (JSON only):`;
   }
 
   async destroy(): Promise<void> {
-    if (this.baseSession) {
-      try {
-        await this.baseSession.destroy();
-      } catch (error) {
-        logger.error('[Tweet Filter] Failed to destroy base session:', error);
-      } finally {
-        this.baseSession = null;
-      }
-    }
+    await this._destroyBaseSession();
   }
 
   isMultimodalEnabled(): boolean {
