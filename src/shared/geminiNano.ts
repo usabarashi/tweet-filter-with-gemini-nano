@@ -5,7 +5,6 @@ import { logger } from './logger';
 
 class GeminiNanoService {
   private baseSession: LanguageModelSession | null = null;
-  private session: LanguageModelSession | null = null;
   private filterCriteria: string = '';
   private currentOutputLanguage: OutputLanguage = 'en';
   private supportsMultimodal: boolean = false;
@@ -122,13 +121,6 @@ class GeminiNanoService {
     }
   }
 
-  private ensureSession(): LanguageModelSession {
-    if (!this.session) {
-      throw new Error('Session not initialized');
-    }
-    return this.session;
-  }
-
   private ensureBaseSession(): LanguageModelSession {
     if (!this.baseSession) {
       throw new Error('Base session not initialized');
@@ -157,9 +149,7 @@ class GeminiNanoService {
     }
   }
 
-  async describeImages(media: MediaData[], session?: LanguageModelSession): Promise<string[]> {
-    const activeSession = session || this.ensureSession();
-
+  async describeImages(media: MediaData[], session: LanguageModelSession): Promise<string[]> {
     if (!this.supportsMultimodal) {
       logger.warn('[Tweet Filter] Multimodal not supported, skipping image description');
       return [];
@@ -175,7 +165,7 @@ class GeminiNanoService {
           continue;
         }
 
-        const response = await activeSession.prompt([
+        const response = await session.prompt([
           {
             role: 'user',
             content: [
@@ -193,9 +183,7 @@ class GeminiNanoService {
     return descriptions;
   }
 
-  async evaluateText(tweetText: string, session?: LanguageModelSession): Promise<boolean> {
-    const activeSession = session || this.ensureSession();
-
+  async evaluateText(tweetText: string, session: LanguageModelSession): Promise<boolean> {
     try {
       const promptText = `Evaluate if this tweet matches the following criteria:
 "${this.filterCriteria}"
@@ -207,7 +195,7 @@ If the tweet does NOT match the criteria, respond: {"show": false}
 
 Response (JSON only):`;
 
-      const response = await activeSession.prompt(promptText);
+      const response = await session.prompt(promptText);
 
       const jsonMatch = response.match(/\{"show":\s*(true|false)\}/);
       if (jsonMatch) {
@@ -227,24 +215,10 @@ Response (JSON only):`;
   }
 
   async destroy(): Promise<void> {
-    if (this.session) {
-      await this.session.destroy();
-      this.session = null;
-    }
     if (this.baseSession) {
       await this.baseSession.destroy();
       this.baseSession = null;
     }
-  }
-
-  getQuotaUsage(): { usage: number; quota: number } | null {
-    if (!this.session) {
-      return null;
-    }
-    return {
-      usage: this.session.inputUsage,
-      quota: this.session.inputQuota,
-    };
   }
 
   isMultimodalEnabled(): boolean {
