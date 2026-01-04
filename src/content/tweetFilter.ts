@@ -123,8 +123,6 @@ class TweetFilter {
         const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
         if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
           logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
-          domManipulator.markAsProcessed(tweet.element);
-          if (clonedSession) await clonedSession.destroy();
           continue;
         }
 
@@ -137,16 +135,11 @@ class TweetFilter {
         } else {
           logger.log('[Tweet Filter] 👀 Showing tweet');
         }
-
-        domManipulator.markAsProcessed(tweet.element);
-
-        // Destroy only the cloned session after processing this tweet
-        if (clonedSession) {
-          await clonedSession.destroy();
-        }
       } catch (error) {
         logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
-        // On error, destroy cloned session and show the tweet by default
+        // On error, show the tweet by default
+      } finally {
+        // Always clean up resources
         if (clonedSession) {
           try {
             await clonedSession.destroy();
