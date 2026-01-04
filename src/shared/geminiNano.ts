@@ -4,8 +4,10 @@ import type { OutputLanguage } from '../types/storage';
 import { logger } from './logger';
 
 class GeminiNanoService {
+  private baseSession: LanguageModelSession | null = null;
   private session: LanguageModelSession | null = null;
   private filterCriteria: string = '';
+  private currentOutputLanguage: OutputLanguage = 'en';
   private supportsMultimodal: boolean = false;
   private createSessionResult: 'multimodal' | 'text-only' | null = null;
 
@@ -32,7 +34,24 @@ class GeminiNanoService {
 
   async initialize(systemPrompt: string, requireUserGesture = false, onProgress?: (progress: number) => void, outputLanguage: OutputLanguage = 'en'): Promise<boolean> {
     try {
+      // Check if we need to reinitialize base session
+      const needsReinit = !this.baseSession ||
+                          this.filterCriteria !== systemPrompt ||
+                          this.currentOutputLanguage !== outputLanguage;
+
+      if (!needsReinit) {
+        // Base session already exists with same config, no need to reinitialize
+        return true;
+      }
+
       this.filterCriteria = systemPrompt;
+      this.currentOutputLanguage = outputLanguage;
+
+      // Destroy old base session if exists
+      if (this.baseSession) {
+        await this.baseSession.destroy();
+        this.baseSession = null;
+      }
 
       // Helper function to create session with given options
       const createSession = async (expectedInputs: Array<{ type: string }>) => {
@@ -69,7 +88,7 @@ class GeminiNanoService {
             !requireUserGesture) {
           // Fall through to text-only check
         } else {
-          this.session = await createSession([{ type: 'text' }, { type: 'image' }]);
+          this.baseSession = await createSession([{ type: 'text' }, { type: 'image' }]);
           this.supportsMultimodal = true;
           this.createSessionResult = 'multimodal';
           return true;
@@ -90,8 +109,8 @@ class GeminiNanoService {
         }
       }
 
-      // 4. Create text-only session
-      this.session = await createSession([{ type: 'text' }]);
+      // 4. Create text-only base session
+      this.baseSession = await createSession([{ type: 'text' }]);
       this.supportsMultimodal = false;
       this.createSessionResult = 'text-only';
       return true;
@@ -110,6 +129,18 @@ class GeminiNanoService {
     return this.session;
   }
 
+  private ensureBaseSession(): LanguageModelSession {
+    if (!this.baseSession) {
+      throw new Error('Base session not initialized');
+    }
+    return this.baseSession;
+  }
+
+  async createClonedSession(): Promise<LanguageModelSession> {
+    const baseSession = this.ensureBaseSession();
+    return await baseSession.clone();
+  }
+
   private async fetchImageAsBlob(url: string): Promise<Blob | null> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -126,8 +157,8 @@ class GeminiNanoService {
     }
   }
 
-  async describeImages(media: MediaData[]): Promise<string[]> {
-    const session = this.ensureSession();
+  async describeImages(media: MediaData[], session?: LanguageModelSession): Promise<string[]> {
+    const activeSession = session || this.ensureSession();
 
     if (!this.supportsMultimodal) {
       logger.warn('[Tweet Filter] Multimodal not supported, skipping image description');
@@ -144,7 +175,7 @@ class GeminiNanoService {
           continue;
         }
 
-        const response = await session.prompt([
+        const response = await activeSession.prompt([
           {
             role: 'user',
             content: [
@@ -162,8 +193,8 @@ class GeminiNanoService {
     return descriptions;
   }
 
-  async evaluateText(tweetText: string): Promise<boolean> {
-    const session = this.ensureSession();
+  async evaluateText(tweetText: string, session?: LanguageModelSession): Promise<boolean> {
+    const activeSession = session || this.ensureSession();
 
     try {
       const promptText = `Evaluate if this tweet matches the following criteria:
@@ -176,7 +207,7 @@ If the tweet does NOT match the criteria, respond: {"show": false}
 
 Response (JSON only):`;
 
-      const response = await session.prompt(promptText);
+      const response = await activeSession.prompt(promptText);
 
       const jsonMatch = response.match(/\{"show":\s*(true|false)\}/);
       if (jsonMatch) {
@@ -199,6 +230,10 @@ Response (JSON only):`;
     if (this.session) {
       await this.session.destroy();
       this.session = null;
+    }
+    if (this.baseSession) {
+      await this.baseSession.destroy();
+      this.baseSession = null;
     }
   }
 
