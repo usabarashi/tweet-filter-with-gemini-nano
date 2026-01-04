@@ -78,9 +78,9 @@ class TweetFilter {
 
       // Check if tweet has content to evaluate before creating session
       const mainText = tweet.textContent.trim();
-      const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
+      const hasQuotedContent = !!(tweet.quotedTweet?.textContent?.trim() || tweet.quotedTweet?.media?.length);
 
-      if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
+      if (!mainText && !tweet.media?.length && !hasQuotedContent) {
         logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
         domManipulator.markAsProcessed(tweet.element);
         continue;
