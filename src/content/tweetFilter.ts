@@ -140,7 +140,11 @@ class TweetFilter {
       } catch (error) {
         logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
         // On error, destroy session and show the tweet by default
-        await geminiNano.destroy();
+        try {
+          await geminiNano.destroy();
+        } catch (destroyError) {
+          logger.error('[Tweet Filter] Failed to destroy session:', destroyError);
+        }
         domManipulator.markAsProcessed(tweet.element);
       }
 
