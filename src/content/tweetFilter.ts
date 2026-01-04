@@ -62,34 +62,19 @@ class TweetFilter {
       if (!tweet) continue;
 
       try {
-        // Check quota usage and reinitialize if needed
-        const quotaInfo = geminiNano.getQuotaUsage();
-        if (
-          quotaInfo &&
-          quotaInfo.usage >= quotaInfo.quota * PROCESSING_CONFIG.QUOTA_WARNING_THRESHOLD
-        ) {
-          logger.warn(
-            '[Tweet Filter] Approaching quota limit:',
-            quotaInfo.usage,
-            '/',
-            quotaInfo.quota,
-            '- Reinitializing session...'
-          );
+        // Initialize session for this tweet
+        const config = await storage.getFilterConfig();
+        const success = await geminiNano.initialize(
+          config.prompt,
+          false,
+          undefined,
+          config.outputLanguage
+        );
 
-          // Get current config to reinitialize
-          const config = await storage.getFilterConfig();
-
-          // Destroy and reinitialize
-          await geminiNano.destroy();
-          const success = await geminiNano.initialize(config.prompt, false, undefined, config.outputLanguage);
-
-          if (!success) {
-            logger.error('[Tweet Filter] Failed to reinitialize session');
-            domManipulator.markAsProcessed(tweet.element);
-            continue;
-          }
-
-          logger.log('[Tweet Filter] ✓ Session reinitialized successfully');
+        if (!success) {
+          logger.error('[Tweet Filter] Failed to initialize session');
+          domManipulator.markAsProcessed(tweet.element);
+          continue;
         }
 
         // Evaluate text and images with short-circuit evaluation
@@ -134,6 +119,7 @@ class TweetFilter {
         if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
           logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
           domManipulator.markAsProcessed(tweet.element);
+          await geminiNano.destroy();
           continue;
         }
 
@@ -148,9 +134,13 @@ class TweetFilter {
         }
 
         domManipulator.markAsProcessed(tweet.element);
+
+        // Destroy session after processing this tweet
+        await geminiNano.destroy();
       } catch (error) {
         logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
-        // On error, show the tweet by default
+        // On error, destroy session and show the tweet by default
+        await geminiNano.destroy();
         domManipulator.markAsProcessed(tweet.element);
       }
 
