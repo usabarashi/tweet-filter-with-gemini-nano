@@ -48,8 +48,13 @@ class GeminiNanoService {
 
       // Destroy old base session if exists
       if (this.baseSession) {
-        await this.baseSession.destroy();
-        this.baseSession = null;
+        try {
+          await this.baseSession.destroy();
+        } catch (error) {
+          logger.error('[Tweet Filter] Failed to destroy old base session:', error);
+        } finally {
+          this.baseSession = null;
+        }
       }
 
       // Helper function to create session with given options
