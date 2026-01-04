@@ -16,5 +16,4 @@ export const CSS_CLASSES = {
 export const PROCESSING_CONFIG = {
   BATCH_SIZE: 1,
   DELAY_BETWEEN_BATCHES: 100, // ms
-  QUOTA_WARNING_THRESHOLD: 0.9, // 90% of quota
 } as const;

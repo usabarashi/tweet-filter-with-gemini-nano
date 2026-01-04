@@ -4,8 +4,9 @@ import type { OutputLanguage } from '../types/storage';
 import { logger } from './logger';
 
 class GeminiNanoService {
-  private session: LanguageModelSession | null = null;
+  private baseSession: LanguageModelSession | null = null;
   private filterCriteria: string = '';
+  private currentOutputLanguage: OutputLanguage = 'en';
   private supportsMultimodal: boolean = false;
   private createSessionResult: 'multimodal' | 'text-only' | null = null;
 
@@ -32,7 +33,21 @@ class GeminiNanoService {
 
   async initialize(systemPrompt: string, requireUserGesture = false, onProgress?: (progress: number) => void, outputLanguage: OutputLanguage = 'en'): Promise<boolean> {
     try {
+      // Check if we need to reinitialize base session
+      const needsReinit = !this.baseSession ||
+                          this.filterCriteria !== systemPrompt ||
+                          this.currentOutputLanguage !== outputLanguage;
+
+      if (!needsReinit) {
+        // Base session already exists with same config, no need to reinitialize
+        return true;
+      }
+
       this.filterCriteria = systemPrompt;
+      this.currentOutputLanguage = outputLanguage;
+
+      // Destroy old base session if exists
+      await this._destroyBaseSession();
 
       // Helper function to create session with given options
       const createSession = async (expectedInputs: Array<{ type: string }>) => {
@@ -69,7 +84,7 @@ class GeminiNanoService {
             !requireUserGesture) {
           // Fall through to text-only check
         } else {
-          this.session = await createSession([{ type: 'text' }, { type: 'image' }]);
+          this.baseSession = await createSession([{ type: 'text' }, { type: 'image' }]);
           this.supportsMultimodal = true;
           this.createSessionResult = 'multimodal';
           return true;
@@ -90,8 +105,8 @@ class GeminiNanoService {
         }
       }
 
-      // 4. Create text-only session
-      this.session = await createSession([{ type: 'text' }]);
+      // 4. Create text-only base session
+      this.baseSession = await createSession([{ type: 'text' }]);
       this.supportsMultimodal = false;
       this.createSessionResult = 'text-only';
       return true;
@@ -103,11 +118,28 @@ class GeminiNanoService {
     }
   }
 
-  private ensureSession(): LanguageModelSession {
-    if (!this.session) {
-      throw new Error('Session not initialized');
+  private ensureBaseSession(): LanguageModelSession {
+    if (!this.baseSession) {
+      throw new Error('Base session not initialized');
     }
-    return this.session;
+    return this.baseSession;
+  }
+
+  private async _destroyBaseSession(): Promise<void> {
+    if (this.baseSession) {
+      try {
+        await this.baseSession.destroy();
+      } catch (error) {
+        logger.error('[Tweet Filter] Failed to destroy base session:', error);
+      } finally {
+        this.baseSession = null;
+      }
+    }
+  }
+
+  async createClonedSession(): Promise<LanguageModelSession> {
+    const baseSession = this.ensureBaseSession();
+    return await baseSession.clone();
   }
 
   private async fetchImageAsBlob(url: string): Promise<Blob | null> {
@@ -126,9 +158,7 @@ class GeminiNanoService {
     }
   }
 
-  async describeImages(media: MediaData[]): Promise<string[]> {
-    const session = this.ensureSession();
-
+  async describeImages(media: MediaData[], session: LanguageModelSession): Promise<string[]> {
     if (!this.supportsMultimodal) {
       logger.warn('[Tweet Filter] Multimodal not supported, skipping image description');
       return [];
@@ -162,9 +192,7 @@ class GeminiNanoService {
     return descriptions;
   }
 
-  async evaluateText(tweetText: string): Promise<boolean> {
-    const session = this.ensureSession();
-
+  async evaluateText(tweetText: string, session: LanguageModelSession): Promise<boolean> {
     try {
       const promptText = `Evaluate if this tweet matches the following criteria:
 "${this.filterCriteria}"
@@ -196,20 +224,7 @@ Response (JSON only):`;
   }
 
   async destroy(): Promise<void> {
-    if (this.session) {
-      await this.session.destroy();
-      this.session = null;
-    }
-  }
-
-  getQuotaUsage(): { usage: number; quota: number } | null {
-    if (!this.session) {
-      return null;
-    }
-    return {
-      usage: this.session.inputUsage,
-      quota: this.session.inputQuota,
-    };
+    await this._destroyBaseSession();
   }
 
   isMultimodalEnabled(): boolean {

@@ -57,48 +57,47 @@ class TweetFilter {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
+    // Initialize base session once before processing queue
+    const config = await storage.getFilterConfig();
+    const success = await geminiNano.initialize(
+      config.prompt,
+      false,
+      undefined,
+      config.outputLanguage
+    );
+
+    if (!success) {
+      logger.error('[Tweet Filter] Failed to initialize base session');
+      this.isProcessing = false;
+      return;
+    }
+
     while (this.processingQueue.length > 0) {
       const tweet = this.processingQueue.shift();
       if (!tweet) continue;
 
+      // Check if tweet has content to evaluate before creating session
+      const mainText = tweet.textContent.trim();
+      const hasQuotedContent = !!(tweet.quotedTweet?.textContent?.trim() || tweet.quotedTweet?.media?.length);
+
+      if (!mainText && !tweet.media?.length && !hasQuotedContent) {
+        logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
+        domManipulator.markAsProcessed(tweet.element);
+        continue;
+      }
+
+      let clonedSession: LanguageModelSession | null = null;
+
       try {
-        // Check quota usage and reinitialize if needed
-        const quotaInfo = geminiNano.getQuotaUsage();
-        if (
-          quotaInfo &&
-          quotaInfo.usage >= quotaInfo.quota * PROCESSING_CONFIG.QUOTA_WARNING_THRESHOLD
-        ) {
-          logger.warn(
-            '[Tweet Filter] Approaching quota limit:',
-            quotaInfo.usage,
-            '/',
-            quotaInfo.quota,
-            '- Reinitializing session...'
-          );
-
-          // Get current config to reinitialize
-          const config = await storage.getFilterConfig();
-
-          // Destroy and reinitialize
-          await geminiNano.destroy();
-          const success = await geminiNano.initialize(config.prompt, false, undefined, config.outputLanguage);
-
-          if (!success) {
-            logger.error('[Tweet Filter] Failed to reinitialize session');
-            domManipulator.markAsProcessed(tweet.element);
-            continue;
-          }
-
-          logger.log('[Tweet Filter] ✓ Session reinitialized successfully');
-        }
+        // Create cloned session for this tweet
+        clonedSession = await geminiNano.createClonedSession();
 
         // Evaluate text and images with short-circuit evaluation
         let shouldShow = false;
 
         // Stage 1: Evaluate main text only
-        const mainText = tweet.textContent.trim();
         if (mainText) {
-          shouldShow = await geminiNano.evaluateText(mainText);
+          shouldShow = await geminiNano.evaluateText(mainText, clonedSession);
         }
 
         // Stage 2: If main text didn't match, evaluate quoted tweet text only
@@ -107,34 +106,26 @@ class TweetFilter {
           if (quotedText) {
             const quotedAuthor = tweet.quotedTweet.author ? `@${tweet.quotedTweet.author}` : 'someone';
             const quotedContent = `[Quoting ${quotedAuthor}: ${quotedText}]`;
-            shouldShow = await geminiNano.evaluateText(quotedContent);
+            shouldShow = await geminiNano.evaluateText(quotedContent, clonedSession);
           }
         }
 
         // Stage 3: If text didn't match, evaluate quoted tweet images
         if (!shouldShow && tweet.quotedTweet?.media && tweet.quotedTweet.media.length > 0) {
-          const quotedDescriptions = await geminiNano.describeImages(tweet.quotedTweet.media);
+          const quotedDescriptions = await geminiNano.describeImages(tweet.quotedTweet.media, clonedSession);
           if (quotedDescriptions.length > 0) {
             const quotedImageText = '[Images in quoted tweet: ' + quotedDescriptions.join('; ') + ']';
-            shouldShow = await geminiNano.evaluateText(quotedImageText);
+            shouldShow = await geminiNano.evaluateText(quotedImageText, clonedSession);
           }
         }
 
         // Stage 4: If still didn't match, evaluate main tweet images
         if (!shouldShow && tweet.media && tweet.media.length > 0) {
-          const descriptions = await geminiNano.describeImages(tweet.media);
+          const descriptions = await geminiNano.describeImages(tweet.media, clonedSession);
           if (descriptions.length > 0) {
             const imageText = '[Images in this tweet: ' + descriptions.join('; ') + ']';
-            shouldShow = await geminiNano.evaluateText(imageText);
+            shouldShow = await geminiNano.evaluateText(imageText, clonedSession);
           }
-        }
-
-        // If no content at all, show by default
-        const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
-        if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
-          logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
-          domManipulator.markAsProcessed(tweet.element);
-          continue;
         }
 
         // Cache the evaluation result
@@ -146,11 +137,18 @@ class TweetFilter {
         } else {
           logger.log('[Tweet Filter] 👀 Showing tweet');
         }
-
-        domManipulator.markAsProcessed(tweet.element);
       } catch (error) {
         logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
         // On error, show the tweet by default
+      } finally {
+        // Always clean up resources
+        if (clonedSession) {
+          try {
+            await clonedSession.destroy();
+          } catch (destroyError) {
+            logger.error('[Tweet Filter] Failed to destroy cloned session:', destroyError);
+          }
+        }
         domManipulator.markAsProcessed(tweet.element);
       }
 
