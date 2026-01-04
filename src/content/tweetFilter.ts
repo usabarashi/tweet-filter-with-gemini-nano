@@ -76,6 +76,16 @@ class TweetFilter {
       const tweet = this.processingQueue.shift();
       if (!tweet) continue;
 
+      // Check if tweet has content to evaluate before creating session
+      const mainText = tweet.textContent.trim();
+      const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
+
+      if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
+        logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
+        domManipulator.markAsProcessed(tweet.element);
+        continue;
+      }
+
       let clonedSession: LanguageModelSession | null = null;
 
       try {
@@ -86,7 +96,6 @@ class TweetFilter {
         let shouldShow = false;
 
         // Stage 1: Evaluate main text only
-        const mainText = tweet.textContent.trim();
         if (mainText) {
           shouldShow = await geminiNano.evaluateText(mainText, clonedSession);
         }
@@ -117,13 +126,6 @@ class TweetFilter {
             const imageText = '[Images in this tweet: ' + descriptions.join('; ') + ']';
             shouldShow = await geminiNano.evaluateText(imageText, clonedSession);
           }
-        }
-
-        // If no content at all, show by default
-        const hasQuotedContent = tweet.quotedTweet && (tweet.quotedTweet.textContent.trim() || (tweet.quotedTweet.media && tweet.quotedTweet.media.length > 0));
-        if (!mainText && (!tweet.media || tweet.media.length === 0) && !hasQuotedContent) {
-          logger.log('[Tweet Filter] ⚠️ No content to evaluate, showing tweet by default');
-          continue;
         }
 
         // Cache the evaluation result
