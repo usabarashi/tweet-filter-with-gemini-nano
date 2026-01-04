@@ -216,8 +216,13 @@ Response (JSON only):`;
 
   async destroy(): Promise<void> {
     if (this.baseSession) {
-      await this.baseSession.destroy();
-      this.baseSession = null;
+      try {
+        await this.baseSession.destroy();
+      } catch (error) {
+        logger.error('[Tweet Filter] Failed to destroy base session:', error);
+      } finally {
+        this.baseSession = null;
+      }
     }
   }
 
