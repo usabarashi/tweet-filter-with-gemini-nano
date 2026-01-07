@@ -12,7 +12,7 @@ A Chrome Extension that filters tweets on Twitter/X using on-device AI with Gemi
 
 - Chrome 131 or later
 - Gemini Nano with required Chrome flags enabled
-- See [Get started with built-in AI](https://developer.chrome.com/docs/ai/get-started) for setup instructions and system requirements
+  - See [Get started with built-in AI](https://developer.chrome.com/docs/ai/get-started) for setup instructions and system requirements
 
 **Note**: The extension works in text-only mode, but enabling the multimodal flag (`chrome://flags/#prompt-api-for-gemini-nano-multimodal-input`) is required for image analysis.
 
