@@ -71,7 +71,7 @@ try {
 
   // Process and copy HTML file (update script reference)
   let html = readFileSync(resolve(__dirname, paths.options.srcHtml), 'utf-8');
-  html = html.replace('src="index.ts"', 'src="index.js"');
+  html = html.replace(/src\s*=\s*["']index\.ts["']/, 'src="index.js"');
   writeFileSync(paths.options.outHtml, html);
 
   // Copy CSS file
