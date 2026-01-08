@@ -26,7 +26,7 @@
     },
 
     /* Types */
-    "types": ["chrome", "vite/client"]
+    "types": ["chrome"]
   },
-  "include": ["src"]
+  "include": ["src", "build.mjs"]
 }
