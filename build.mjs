@@ -32,9 +32,8 @@ const paths = {
 };
 
 try {
-  // Clean and create dist directory
+  // Clean dist directory and create subdirectories
   rmSync(outdir, { recursive: true, force: true });
-  mkdirSync(outdir, { recursive: true });
   mkdirSync(paths.content.outDir, { recursive: true });
   mkdirSync(paths.options.outDir, { recursive: true });
 
