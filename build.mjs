@@ -8,12 +8,35 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const outdir = resolve(__dirname, 'dist');
 const nodeEnv = process.env.NODE_ENV || 'production';
 
+// Path configuration
+const paths = {
+  content: {
+    entry: 'src/content/index.ts',
+    outDir: 'dist/content',
+    outJs: 'dist/content/index.js',
+    outCss: 'content/index.css', // Referenced in manifest.json
+  },
+  options: {
+    entry: 'src/options/index.ts',
+    outDir: 'dist/options',
+    outJs: 'dist/options/index.js',
+    srcHtml: 'src/options/index.html',
+    outHtml: 'dist/options/index.html',
+    srcCss: 'src/options/styles.css',
+    outCss: 'dist/options/styles.css',
+  },
+  manifest: {
+    src: 'public/manifest.json',
+    out: 'dist/manifest.json',
+  },
+};
+
 try {
   // Clean and create dist directory
   rmSync(outdir, { recursive: true, force: true });
   mkdirSync(outdir, { recursive: true });
-  mkdirSync(resolve(outdir, 'content'), { recursive: true });
-  mkdirSync(resolve(outdir, 'options'), { recursive: true });
+  mkdirSync(paths.content.outDir, { recursive: true });
+  mkdirSync(paths.options.outDir, { recursive: true });
 
   // Build configuration
   const buildConfig = {
@@ -31,44 +54,43 @@ try {
   await Promise.all([
     // Build content script
     esbuild.build({
-      entryPoints: ['src/content/index.ts'],
+      entryPoints: [paths.content.entry],
       bundle: true,
-      outfile: 'dist/content/index.js',
+      outfile: paths.content.outJs,
       format: 'iife',
       ...buildConfig,
     }),
     // Build options page script
     esbuild.build({
-      entryPoints: ['src/options/index.ts'],
+      entryPoints: [paths.options.entry],
       bundle: true,
-      outfile: 'dist/options/index.js',
+      outfile: paths.options.outJs,
       format: 'iife',
       ...buildConfig,
     }),
   ]);
 
   // Process and copy HTML file (update script reference)
-  let html = readFileSync(resolve(__dirname, 'src/options/index.html'), 'utf-8');
+  let html = readFileSync(resolve(__dirname, paths.options.srcHtml), 'utf-8');
   html = html.replace('src="index.ts"', 'src="index.js"');
-  writeFileSync(resolve(outdir, 'options/index.html'), html);
+  writeFileSync(paths.options.outHtml, html);
 
   // Copy CSS file
   copyFileSync(
-    resolve(__dirname, 'src/options/styles.css'),
-    resolve(outdir, 'options/styles.css')
+    resolve(__dirname, paths.options.srcCss),
+    paths.options.outCss
   );
 
   // Update manifest.json to use built files
-  const manifestPath = resolve(__dirname, 'public/manifest.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  const manifest = JSON.parse(readFileSync(resolve(__dirname, paths.manifest.src), 'utf-8'));
 
   // Update file references to point to built JS and CSS files
   manifest.content_scripts[0].js = ['content/index.js'];
-  manifest.content_scripts[0].css = ['content/index.css'];
+  manifest.content_scripts[0].css = [paths.content.outCss];
   manifest.options_page = 'options/index.html';
 
   writeFileSync(
-    resolve(outdir, 'manifest.json'),
+    paths.manifest.out,
     JSON.stringify(manifest, null, 2)
   );
 
