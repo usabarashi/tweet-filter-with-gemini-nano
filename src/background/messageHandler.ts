@@ -82,8 +82,8 @@ export class MessageHandler {
       quotedTweet: message.quotedTweet,
     });
 
-    // Cache the result (don't await - fire and forget for performance)
-    cacheManager.set(message.tweetId, response.shouldShow).catch(err => {
+    // Await cache write to ensure it completes before the service worker can be suspended
+    await cacheManager.set(message.tweetId, response.shouldShow).catch(err => {
       logger.error('[MessageHandler] Failed to cache result:', err);
     });
 
