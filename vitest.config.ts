@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'url';
 import path from 'path';
 
 export default defineConfig({
@@ -47,7 +48,7 @@ export default defineConfig({
   // Path alias resolution (matches tsconfig.json)
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), './src'),
     },
   },
 });
