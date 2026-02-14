@@ -9,9 +9,9 @@ import { vi, beforeEach } from 'vitest';
 
 // Chrome Storage API mock
 const createStorageMock = () => ({
-  get: vi.fn((_keys?: unknown, callback?: () => void) => {
+  get: vi.fn((_keys?: unknown, callback?: (result: Record<string, unknown>) => void) => {
     if (callback) {
-      callback();
+      callback({});
     }
     return Promise.resolve({});
   }),
