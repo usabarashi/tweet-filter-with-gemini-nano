@@ -74,6 +74,12 @@ class TweetFilter {
           logger.log('[Tweet Filter] Showing tweet');
         }
       } catch (error) {
+        // If extension context is invalidated, stop processing entirely
+        if (!chrome.runtime?.id) {
+          logger.error('[Tweet Filter] Extension context invalidated, stopping queue');
+          this.processingQueue = [];
+          break;
+        }
         logger.error('[Tweet Filter] Failed to evaluate tweet:', error);
         // On error, show the tweet by default
       } finally {

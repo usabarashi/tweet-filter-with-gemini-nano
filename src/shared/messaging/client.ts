@@ -17,6 +17,10 @@ export class ServiceWorkerClient {
     message: DistributiveOmit<Message, 'requestId' | 'timestamp'>,
     timeout: number
   ): Promise<T> {
+    if (!chrome.runtime?.id) {
+      return Promise.reject(new Error('Extension context invalidated'));
+    }
+
     const requestId = crypto.randomUUID();
     const fullMessage: Message = {
       ...message,
