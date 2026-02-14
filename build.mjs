@@ -26,8 +26,6 @@ const paths = {
     entry: 'src/content/index.ts',
     outDir: 'dist/content',
     outJs: 'dist/content/index.js',
-    srcCss: 'src/content/styles.css',
-    outCss: 'dist/content/index.css',
   },
   options: {
     entry: 'src/options/index.ts',
@@ -106,11 +104,7 @@ try {
     paths.offscreen.outHtml
   );
 
-  // Copy content script CSS
-  copyFileSync(
-    resolve(__dirname, paths.content.srcCss),
-    paths.content.outCss
-  );
+  // Content script CSS is emitted by esbuild (via import './styles.css' in index.ts)
 
   // Process and copy options HTML file (update script reference)
   let html = readFileSync(resolve(__dirname, paths.options.srcHtml), 'utf-8');
