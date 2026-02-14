@@ -124,7 +124,8 @@ describe('EvaluationService', () => {
       // Quoted tweet evaluation should include @author
       expect(mockSession.prompt).toHaveBeenNthCalledWith(
         2,
-        expect.stringContaining('@techguru')
+        expect.stringContaining('@techguru'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
 

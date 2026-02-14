@@ -127,22 +127,39 @@ export class EvaluationService {
     }
   }
 
+  private async promptWithTimeout(
+    session: LanguageModelSession,
+    input: string | Array<{ role: string; content: { type: string; text?: string; data?: Blob }[] }>,
+  ): Promise<string> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUTS.PROMPT);
+    try {
+      if (typeof input === 'string') {
+        return await session.prompt(input, { signal: controller.signal });
+      }
+      return await session.prompt(input, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   private async describeImages(media: MediaData[], session: LanguageModelSession): Promise<string[]> {
     if (!sessionManager.isMultimodalEnabled()) {
       logger.warn('[EvaluationService] Multimodal not supported, skipping image description');
       return [];
     }
 
-    // Parallelize image fetching and description
-    const descriptionPromises = media.map(async (item) => {
-      try {
-        const blob = await this.fetchImageAsBlob(item.url);
-        if (!blob) {
-          logger.warn('[EvaluationService] Failed to fetch image, skipping');
-          return null;
-        }
+    // Fetch all images in parallel
+    const blobs = await Promise.all(
+      media.map(item => this.fetchImageAsBlob(item.url))
+    );
 
-        const response = await session.prompt([
+    // Describe images sequentially to avoid race conditions on the stateful session
+    const descriptions: string[] = [];
+    for (const blob of blobs) {
+      if (!blob) continue;
+      try {
+        const response = await this.promptWithTimeout(session, [
           {
             role: 'user',
             content: [
@@ -151,15 +168,13 @@ export class EvaluationService {
             ]
           }
         ]);
-        return response.trim();
+        descriptions.push(response.trim());
       } catch (error) {
         logger.error('[EvaluationService] Failed to describe image:', error);
-        return null;
       }
-    });
+    }
 
-    const results = await Promise.all(descriptionPromises);
-    return results.filter((desc): desc is string => desc !== null);
+    return descriptions;
   }
 
   private async evaluateText(tweetText: string, session: LanguageModelSession): Promise<boolean> {
@@ -175,7 +190,7 @@ If the tweet does NOT match the criteria, respond: {"show": false}
 
 Response (JSON only):`;
 
-      const response = await session.prompt(promptText);
+      const response = await this.promptWithTimeout(session, promptText);
 
       const jsonMatch = response.match(/\{"show":\s*(true|false)\}/);
       if (jsonMatch) {

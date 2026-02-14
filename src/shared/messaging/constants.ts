@@ -20,6 +20,7 @@ export const TIMEOUTS = {
   CACHE_CHECK_REQUEST: 1000,  // 1s for cache check
   SESSION_STATUS_REQUEST: 2000, // 2s for status
   IMAGE_FETCH: 5000,           // 5s for image fetch
+  PROMPT: 10000,               // 10s for AI prompt inference
   RECONNECT_DELAY: 1000,      // 1s before reconnect
   MAX_RECONNECT_ATTEMPTS: 5,
 } as const;
