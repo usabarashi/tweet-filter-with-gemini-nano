@@ -14,8 +14,10 @@ import { evaluationService, type EvaluationRequest, type EvaluationResult } from
 import { EvaluationQueue } from './evaluationQueue';
 import { logger } from '../shared/logger';
 
-// Initialize logger
-logger.initialize();
+// Initialize logger (guard against invalidated extension context)
+if (chrome.runtime?.id) {
+  logger.initialize();
+}
 
 logger.log('[Offscreen] Offscreen document initialized');
 

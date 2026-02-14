@@ -1,27 +1,7 @@
 .tweet-filter-placeholder {
   padding: 12px 16px;
-  margin: 4px 0;
-  background-color: #f7f9f9;
-  border: 1px solid #eff3f4;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-@media (prefers-color-scheme: dark) {
-  .tweet-filter-placeholder {
-    background-color: #16181c;
-    border-color: #2f3336;
-  }
-}
-
-.tweet-filter-placeholder:hover {
-  background-color: #f7f9f9;
-}
-
-@media (prefers-color-scheme: dark) {
-  .tweet-filter-placeholder:hover {
-    background-color: #1c1f23;
-  }
+  pointer-events: auto;
+  width: 100%;
 }
 
 .tweet-filter-placeholder-content {
@@ -85,6 +65,14 @@
   }
 }
 
-.tweet-filter-collapsed {
+[data-tweet-filter-collapsed] {
+  /* Disable pointer events on the article so X's click-to-navigate handler
+     never fires. The placeholder re-enables pointer events for itself.
+     Using a data attribute instead of a CSS class because X's React
+     overwrites className on hover, removing custom classes. */
+  pointer-events: none !important;
+}
+
+[data-tweet-filter-collapsed] > *:not(.tweet-filter-placeholder) {
   display: none !important;
 }

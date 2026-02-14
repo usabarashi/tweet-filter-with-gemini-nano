@@ -7,6 +7,10 @@ import type { TweetData } from '../types/tweet';
 import './styles.css';
 
 async function main(): Promise<void> {
+  // Guard: abort if the extension context has been invalidated
+  // (e.g. after extension reload/update while the page is still open)
+  if (!chrome.runtime?.id) return;
+
   // Initialize logger first
   await logger.initialize();
 
