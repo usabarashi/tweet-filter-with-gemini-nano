@@ -14,8 +14,10 @@ import { evaluationService, type EvaluationRequest, type EvaluationResult } from
 import { EvaluationQueue } from './evaluationQueue';
 import { logger } from '../shared/logger';
 
-// Initialize logger
-logger.initialize();
+// Initialize logger (guard against invalidated extension context)
+if (chrome.runtime?.id) {
+  logger.initialize();
+}
 
 logger.log('[Offscreen] Offscreen document initialized');
 
@@ -25,7 +27,7 @@ const evaluationQueue = new EvaluationQueue<EvaluationRequest, EvaluationResult>
 );
 
 // Handle messages from Service Worker only (ignore content script messages)
-chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+chrome.runtime?.onMessage.addListener((message: Message, sender, sendResponse) => {
   // Content scripts have sender.tab; service worker does not
   if (sender.tab) {
     return false;

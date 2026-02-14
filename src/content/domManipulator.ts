@@ -1,19 +1,19 @@
-import { CSS_CLASSES } from '../shared/constants';
+import { CSS_CLASSES, DATA_ATTRIBUTES } from '../shared/constants';
 
-const { COLLAPSED, PLACEHOLDER } = CSS_CLASSES;
+const { PLACEHOLDER } = CSS_CLASSES;
+const { COLLAPSED } = DATA_ATTRIBUTES;
 
 export const domManipulator = {
   collapseTweet(element: HTMLElement): void {
     if (!element.isConnected) return;
-    if (element.classList.contains(COLLAPSED)) return;
+    if (element.dataset[COLLAPSED]) return;
 
-    // Store original display
-    const originalDisplay = element.style.display;
-    element.dataset.originalDisplay = originalDisplay;
-    element.classList.add(COLLAPSED);
-    element.style.display = 'none';
-
-    // Create placeholder
+    // Create placeholder as a child of the article element.
+    // This prevents X's virtual scroller from removing the article while keeping
+    // the orphaned placeholder in the DOM.
+    // CSS `pointer-events: none` on [data-tweet-filter-collapsed] prevents X's
+    // click-to-navigate handler from firing; the placeholder re-enables
+    // pointer-events for itself so the Show button remains clickable.
     const placeholder = document.createElement('div');
     placeholder.className = PLACEHOLDER;
     placeholder.innerHTML = `
@@ -24,24 +24,31 @@ export const domManipulator = {
       </div>
     `;
 
-    // Add click handler
+    // Add expand handler on the button.
+    // stopPropagation prevents the click from reaching X's React root-level
+    // delegation handler which would navigate to the tweet detail page.
     const expandBtn = placeholder.querySelector('.tweet-filter-expand-btn');
-    expandBtn?.addEventListener('click', () => {
+    expandBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       this.expandTweet(element);
     });
 
-    element.parentNode?.insertBefore(placeholder, element);
+    // Insert placeholder as the first child of the article, then hide
+    // original children via CSS ([data-tweet-filter-collapsed] > *:not(.tweet-filter-placeholder))
+    // Using a data attribute instead of a CSS class because X's React re-renders
+    // overwrite className on hover, removing any custom classes we add.
+    // Data attributes survive React reconciliation since React only manages
+    // attributes it knows about.
+    element.prepend(placeholder);
+    element.dataset[COLLAPSED] = 'true';
   },
 
   expandTweet(element: HTMLElement): void {
-    const placeholder = element.previousElementSibling;
-    if (placeholder?.classList.contains(PLACEHOLDER)) {
-      placeholder.remove();
-    }
+    const placeholder = element.querySelector(`.${PLACEHOLDER}`);
+    placeholder?.remove();
 
-    element.classList.remove(COLLAPSED);
-    element.style.display = element.dataset.originalDisplay ?? '';
-    delete element.dataset.originalDisplay;
+    delete element.dataset[COLLAPSED];
   },
 
   markAsProcessed(element: HTMLElement): void {

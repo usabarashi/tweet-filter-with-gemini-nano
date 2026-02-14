@@ -9,8 +9,11 @@ export const TWEET_SELECTORS = [
 ] as const;
 
 export const CSS_CLASSES = {
-  COLLAPSED: 'tweet-filter-collapsed',
   PLACEHOLDER: 'tweet-filter-placeholder',
+} as const;
+
+export const DATA_ATTRIBUTES = {
+  COLLAPSED: 'tweetFilterCollapsed',
 } as const;
 
 export const PROCESSING_CONFIG = {
