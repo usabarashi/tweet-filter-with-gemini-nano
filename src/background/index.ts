@@ -1,5 +1,5 @@
 import { MESSAGE_TYPES } from '../shared/messaging/constants';
-import type { Message } from '../shared/messaging/types';
+import type { Message, InitResponse } from '../shared/messaging/types';
 import { messageHandler } from './messageHandler';
 import { offscreenManager } from './offscreenManager';
 import { cacheManager } from './cacheManager';
@@ -46,13 +46,13 @@ storage.onFilterConfigChange(async (newConfig) => {
 
     try {
       // Send REINIT_REQUEST to offscreen document
-      await offscreenManager.sendToOffscreen<any>({
-        type: MESSAGE_TYPES.REINIT_REQUEST as any,
+      await offscreenManager.sendToOffscreen<InitResponse>({
+        type: MESSAGE_TYPES.REINIT_REQUEST,
         config: {
           prompt: newConfig.prompt,
           outputLanguage: newConfig.outputLanguage,
         },
-      } as any);
+      });
     } catch (error) {
       logger.error('[ServiceWorker] Failed to reinitialize offscreen:', error);
     }

@@ -113,6 +113,9 @@ export interface ErrorMessage extends BaseMessage {
   originalRequestId?: string;
 }
 
+// Distributive Omit for union types (standard Omit collapses unions)
+export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+
 export type Message =
   | InitRequest
   | InitResponse

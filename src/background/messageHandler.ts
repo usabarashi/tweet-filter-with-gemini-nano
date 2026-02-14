@@ -46,7 +46,7 @@ export class MessageHandler {
     const response = await offscreenManager.sendToOffscreen<InitResponse>({
       type: MESSAGE_TYPES.INIT_REQUEST,
       config: message.config,
-    } as any);
+    });
 
     return {
       ...response,
@@ -80,7 +80,7 @@ export class MessageHandler {
       textContent: message.textContent,
       media: message.media,
       quotedTweet: message.quotedTweet,
-    } as any);
+    });
 
     // Cache the result (don't await - fire and forget for performance)
     cacheManager.set(message.tweetId, response.shouldShow).catch(err => {

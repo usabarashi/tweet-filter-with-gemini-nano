@@ -1,4 +1,4 @@
-import type { Message, InitRequest, InitResponse } from '../shared/messaging/types';
+import type { Message, DistributiveOmit, InitRequest, InitResponse } from '../shared/messaging/types';
 import { OFFSCREEN_DOCUMENT, MESSAGE_TYPES } from '../shared/messaging/constants';
 import { logger } from '../shared/logger';
 import { storage } from '../shared/storage';
@@ -120,7 +120,7 @@ export class OffscreenManager {
     logger.error('[OffscreenManager] Failed to initialize offscreen session after all retries');
   }
 
-  async sendToOffscreen<T extends Message>(message: Omit<Message, 'requestId' | 'timestamp'>): Promise<T> {
+  async sendToOffscreen<T extends Message>(message: DistributiveOmit<Message, 'requestId' | 'timestamp'>): Promise<T> {
     await this.ensureOffscreenReady();
 
     const fullMessage: Message = {
