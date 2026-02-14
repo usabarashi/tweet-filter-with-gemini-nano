@@ -24,8 +24,13 @@ const evaluationQueue = new EvaluationQueue<EvaluationRequest, any>(
   (request) => evaluationService.evaluateTweet(request)
 );
 
-// Handle messages from Service Worker
-chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+// Handle messages from Service Worker only (ignore content script messages)
+chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  // Content scripts have sender.tab; service worker does not
+  if (sender.tab) {
+    return false;
+  }
+
   logger.log('[Offscreen] Received message:', message.type);
 
   // Handle message asynchronously
