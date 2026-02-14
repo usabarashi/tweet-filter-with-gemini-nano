@@ -134,6 +134,7 @@ export class EvaluationService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUTS.PROMPT);
     try {
+      // Conditional required for TypeScript overload resolution on session.prompt
       if (typeof input === 'string') {
         return await session.prompt(input, { signal: controller.signal });
       }

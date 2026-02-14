@@ -36,15 +36,22 @@ export class EvaluationCacheManager {
     const release = await this.acquireLock();
 
     try {
-      const result = await chrome.storage.session.get(CACHE_KEY);
+      const result = await chrome.storage.session.get([CACHE_KEY, ORDER_KEY]);
       const cache: CacheData = (result[CACHE_KEY] || {}) as CacheData;
 
       if (!(tweetId in cache)) {
         return null;
       }
 
-      // Update access order for LRU (requires lock as it modifies storage)
-      await this.updateAccessOrderLocked(tweetId);
+      // Update access order for LRU in-place (single storage write)
+      const order: string[] = (result[ORDER_KEY] || []) as string[];
+      const index = order.indexOf(tweetId);
+      if (index > -1) {
+        order.splice(index, 1);
+      }
+      order.push(tweetId);
+      await chrome.storage.session.set({ [ORDER_KEY]: order });
+
       return cache[tweetId];
     } catch (error) {
       logger.error('[CacheManager] Failed to get from cache:', error);
@@ -93,7 +100,7 @@ export class EvaluationCacheManager {
   }
 
   async has(tweetId: string): Promise<boolean> {
-    // Read-only operation, no lock needed
+    // Read-only: no lock needed. May return stale data during concurrent writes (acceptable for cache).
     try {
       const result = await chrome.storage.session.get(CACHE_KEY);
       const cache: CacheData = (result[CACHE_KEY] || {}) as CacheData;
@@ -105,7 +112,7 @@ export class EvaluationCacheManager {
   }
 
   async getBatch(tweetIds: string[]): Promise<Record<string, boolean>> {
-    // Read-only operation, no lock needed
+    // Read-only: no lock needed. May return stale data during concurrent writes (acceptable for cache).
     try {
       const result = await chrome.storage.session.get(CACHE_KEY);
       const cache: CacheData = (result[CACHE_KEY] || {}) as CacheData;
@@ -138,7 +145,7 @@ export class EvaluationCacheManager {
   }
 
   async getSize(): Promise<number> {
-    // Read-only operation, no lock needed
+    // Read-only: no lock needed. May return stale data during concurrent writes (acceptable for cache).
     try {
       const result = await chrome.storage.session.get(CACHE_KEY);
       const cache: CacheData = (result[CACHE_KEY] || {}) as CacheData;
@@ -155,26 +162,6 @@ export class EvaluationCacheManager {
       size,
       maxSize: this.MAX_CACHE_SIZE,
     };
-  }
-
-  /**
-   * Update access order - must be called within a lock
-   */
-  private async updateAccessOrderLocked(tweetId: string): Promise<void> {
-    try {
-      const result = await chrome.storage.session.get(ORDER_KEY);
-      const order: string[] = (result[ORDER_KEY] || []) as string[];
-
-      const index = order.indexOf(tweetId);
-      if (index > -1) {
-        order.splice(index, 1);
-      }
-      order.push(tweetId);
-
-      await chrome.storage.session.set({ [ORDER_KEY]: order });
-    } catch (error) {
-      logger.error('[CacheManager] Failed to update access order:', error);
-    }
   }
 
   /**

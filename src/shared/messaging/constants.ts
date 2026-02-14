@@ -12,8 +12,6 @@ export const MESSAGE_TYPES = {
   ERROR: 'ERROR',
 } as const;
 
-export const CONNECTION_NAME = 'tweet-filter-connection';
-
 export const TIMEOUTS = {
   INIT_REQUEST: 30000,        // 30s for initialization
   EVALUATE_REQUEST: 15000,    // 15s for evaluation
@@ -21,8 +19,6 @@ export const TIMEOUTS = {
   SESSION_STATUS_REQUEST: 2000, // 2s for status
   IMAGE_FETCH: 5000,           // 5s for image fetch
   PROMPT: 10000,               // 10s for AI prompt inference
-  RECONNECT_DELAY: 1000,      // 1s before reconnect
-  MAX_RECONNECT_ATTEMPTS: 5,
 } as const;
 
 // Offscreen Document Configuration

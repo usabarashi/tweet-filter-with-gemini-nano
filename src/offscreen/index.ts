@@ -10,7 +10,7 @@ import type {
 } from '../shared/messaging/types';
 import { MESSAGE_TYPES } from '../shared/messaging/constants';
 import { sessionManager } from './sessionManager';
-import { evaluationService, type EvaluationRequest } from './evaluationService';
+import { evaluationService, type EvaluationRequest, type EvaluationResult } from './evaluationService';
 import { EvaluationQueue } from './evaluationQueue';
 import { logger } from '../shared/logger';
 
@@ -20,7 +20,7 @@ logger.initialize();
 logger.log('[Offscreen] Offscreen document initialized');
 
 // Create evaluation queue to serialize requests
-const evaluationQueue = new EvaluationQueue<EvaluationRequest, any>(
+const evaluationQueue = new EvaluationQueue<EvaluationRequest, EvaluationResult>(
   (request) => evaluationService.evaluateTweet(request)
 );
 
@@ -95,23 +95,38 @@ async function handleInitRequest(message: InitRequest): Promise<InitResponse> {
 async function handleEvaluateRequest(message: EvaluateRequest): Promise<EvaluateResponse> {
   logger.log('[Offscreen] Handling EVALUATE_REQUEST for tweet:', message.tweetId);
 
-  // Queue the evaluation to prevent overloading the AI session
-  const result = await evaluationQueue.enqueue({
-    tweetId: message.tweetId,
-    textContent: message.textContent,
-    media: message.media,
-    quotedTweet: message.quotedTweet,
-  });
+  try {
+    // Queue the evaluation to prevent overloading the AI session
+    const result = await evaluationQueue.enqueue({
+      tweetId: message.tweetId,
+      textContent: message.textContent,
+      media: message.media,
+      quotedTweet: message.quotedTweet,
+    });
 
-  return {
-    type: MESSAGE_TYPES.EVALUATE_RESPONSE,
-    requestId: message.requestId,
-    timestamp: Date.now(),
-    tweetId: message.tweetId,
-    shouldShow: result.shouldShow,
-    cacheHit: false, // Offscreen doesn't know about cache
-    evaluationTime: result.evaluationTime,
-  };
+    return {
+      type: MESSAGE_TYPES.EVALUATE_RESPONSE,
+      requestId: message.requestId,
+      timestamp: Date.now(),
+      tweetId: message.tweetId,
+      shouldShow: result.shouldShow,
+      cacheHit: false, // Offscreen doesn't know about cache
+      evaluationTime: result.evaluationTime,
+    };
+  } catch (error) {
+    logger.error('[Offscreen] Evaluation failed for tweet:', message.tweetId, error);
+    // Return EvaluateResponse (not ErrorMessage) to match the expected return type
+    return {
+      type: MESSAGE_TYPES.EVALUATE_RESPONSE,
+      requestId: message.requestId,
+      timestamp: Date.now(),
+      tweetId: message.tweetId,
+      shouldShow: true, // Show tweet by default on error
+      cacheHit: false,
+      evaluationTime: 0,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function handleSessionStatusRequest(message: SessionStatusRequest): Promise<SessionStatusResponse> {

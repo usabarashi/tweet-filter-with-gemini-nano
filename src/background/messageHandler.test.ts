@@ -298,9 +298,7 @@ describe('MessageHandler', () => {
 
       await messageHandler.handleMessage(message);
 
-      // Cache set is fire-and-forget, so we need to wait a bit
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
+      // Cache set is awaited in the handler, so it completes before the response is returned
       expect(vi.mocked(cacheManager.set)).toHaveBeenCalledWith('tweet-to-cache', true);
     });
 

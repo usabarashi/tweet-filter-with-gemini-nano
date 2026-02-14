@@ -1,4 +1,4 @@
-import type { Message, DistributiveOmit, InitRequest, InitResponse } from '../shared/messaging/types';
+import type { Message, DistributiveOmit, InitResponse } from '../shared/messaging/types';
 import { OFFSCREEN_DOCUMENT, MESSAGE_TYPES } from '../shared/messaging/constants';
 import { logger } from '../shared/logger';
 import { storage } from '../shared/storage';
@@ -84,22 +84,15 @@ export class OffscreenManager {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        // Send INIT_REQUEST to offscreen document
-        const initMessage: Omit<InitRequest, 'requestId' | 'timestamp'> = {
+        // Send INIT_REQUEST directly to offscreen document via sendToOffscreenDirect
+        // (bypassing ensureOffscreenReady since we just created the document)
+        const response = await this.sendToOffscreenDirect<InitResponse>({
           type: MESSAGE_TYPES.INIT_REQUEST,
           config: {
             prompt: config.prompt,
             outputLanguage: config.outputLanguage,
           },
-        } as any;
-
-        const fullMessage: Message = {
-          ...initMessage,
-          requestId: crypto.randomUUID(),
-          timestamp: Date.now(),
-        } as Message;
-
-        const response = await chrome.runtime.sendMessage(fullMessage) as InitResponse;
+        });
 
         if (response && response.success) {
           logger.log('[OffscreenManager] Offscreen session initialized successfully');
@@ -122,7 +115,14 @@ export class OffscreenManager {
 
   async sendToOffscreen<T extends Message>(message: DistributiveOmit<Message, 'requestId' | 'timestamp'>): Promise<T> {
     await this.ensureOffscreenReady();
+    return this.sendToOffscreenDirect<T>(message);
+  }
 
+  /**
+   * Send message to offscreen document without ensuring readiness.
+   * Used internally when the document is known to exist (e.g., right after creation).
+   */
+  private async sendToOffscreenDirect<T extends Message>(message: DistributiveOmit<Message, 'requestId' | 'timestamp'>): Promise<T> {
     const fullMessage: Message = {
       ...message,
       requestId: crypto.randomUUID(),

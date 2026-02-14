@@ -1,5 +1,7 @@
 import type {
   Message,
+  DistributiveOmit,
+  ErrorMessage,
   InitResponse,
   EvaluateResponse,
   SessionStatusResponse,
@@ -12,7 +14,7 @@ import { logger } from '../logger';
 
 export class ServiceWorkerClient {
   private async sendMessage<T extends Message>(
-    message: Omit<Message, 'requestId' | 'timestamp'>,
+    message: DistributiveOmit<Message, 'requestId' | 'timestamp'>,
     timeout: number
   ): Promise<T> {
     const requestId = crypto.randomUUID();
@@ -41,7 +43,7 @@ export class ServiceWorkerClient {
         }
 
         if (response.type === MESSAGE_TYPES.ERROR) {
-          reject(new Error((response as any).error));
+          reject(new Error((response as ErrorMessage).error));
           return;
         }
 
@@ -55,7 +57,7 @@ export class ServiceWorkerClient {
     return this.sendMessage<InitResponse>({
       type: MESSAGE_TYPES.INIT_REQUEST,
       config: { prompt, outputLanguage },
-    } as any, TIMEOUTS.INIT_REQUEST);
+    } as DistributiveOmit<Message, 'requestId' | 'timestamp'>, TIMEOUTS.INIT_REQUEST);
   }
 
   async evaluateTweet(request: {
