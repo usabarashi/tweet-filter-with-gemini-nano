@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EvaluationCacheManager } from './cacheManager';
-import { mockChromeStorage } from '../test-setup';
 
 describe('EvaluationCacheManager', () => {
   let cacheManager: EvaluationCacheManager;
@@ -219,7 +218,7 @@ describe('EvaluationCacheManager', () => {
         cacheManager.get('tweet2'),
       ];
 
-      const results = await Promise.all(operations);
+      await Promise.all(operations);
 
       // Verify final state
       expect(await cacheManager.getSize()).toBe(3);

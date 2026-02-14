@@ -20,7 +20,7 @@ vi.mock('../shared/logger', () => ({
 }));
 
 describe('TweetObserver', () => {
-  let callback: ReturnType<typeof vi.fn>;
+  let callback: (tweet: TweetData) => void;
   let detectedTweets: TweetData[];
 
   beforeEach(() => {
@@ -87,7 +87,7 @@ describe('TweetObserver', () => {
 
   describe('Tweet ID extraction', () => {
     it('should extract tweet ID from status link', () => {
-      const article = createTweet('789', 'Test tweet', 'user1');
+      createTweet('789', 'Test tweet', 'user1');
       tweetObserver.start(callback);
 
       expect(callback).toHaveBeenCalled();
@@ -436,7 +436,7 @@ describe('TweetObserver', () => {
     });
 
     it('should handle empty media arrays', () => {
-      const article = createTweet('123', 'No media', 'user1');
+      createTweet('123', 'No media', 'user1');
       tweetObserver.start(callback);
 
       expect(detectedTweets[0].media).toBeUndefined();

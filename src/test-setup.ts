@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
 /**
  * Chrome Extension API mock setup
@@ -9,25 +9,25 @@ import { vi } from 'vitest';
 
 // Chrome Storage API mock
 const createStorageMock = () => ({
-  get: vi.fn((keys, callback) => {
+  get: vi.fn((_keys?: unknown, callback?: () => void) => {
     if (callback) {
-      callback({});
+      callback();
     }
     return Promise.resolve({});
   }),
-  set: vi.fn((items, callback) => {
+  set: vi.fn((_items?: unknown, callback?: () => void) => {
     if (callback) {
       callback();
     }
     return Promise.resolve();
   }),
-  remove: vi.fn((keys, callback) => {
+  remove: vi.fn((_keys?: unknown, callback?: () => void) => {
     if (callback) {
       callback();
     }
     return Promise.resolve();
   }),
-  clear: vi.fn((callback) => {
+  clear: vi.fn((callback?: () => void) => {
     if (callback) {
       callback();
     }
@@ -37,7 +37,7 @@ const createStorageMock = () => ({
 
 // Chrome Runtime API mock
 const runtimeMock = {
-  sendMessage: vi.fn((message, callback) => {
+  sendMessage: vi.fn((_message?: unknown, callback?: (response: unknown) => void) => {
     if (callback) {
       callback({ success: true });
     }
@@ -51,7 +51,7 @@ const runtimeMock = {
   getContexts: vi.fn(() => Promise.resolve([])),
   id: 'test-extension-id',
   getURL: vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`),
-  lastError: undefined,
+  lastError: undefined as chrome.runtime.LastError | undefined,
 };
 
 // Chrome Offscreen API mock
@@ -85,7 +85,7 @@ const i18nMock = {
 };
 
 // Create global chrome object
-(global as any).chrome = {
+(globalThis as any).chrome = {
   runtime: runtimeMock,
   storage: {
     sync: createStorageMock(),
@@ -105,7 +105,7 @@ beforeEach(() => {
 // Test utility functions
 export const mockChromeStorage = (storageType: 'sync' | 'session' | 'local', data: any) => {
   (chrome.storage[storageType].get as any).mockImplementation(
-    (keys: string | string[] | null, callback?: (result: any) => void) => {
+    (_keys: string | string[] | null, callback?: (result: any) => void) => {
       if (callback) {
         callback(data);
       }
@@ -116,7 +116,7 @@ export const mockChromeStorage = (storageType: 'sync' | 'session' | 'local', dat
 
 export const mockChromeSendMessage = (response: any) => {
   (chrome.runtime.sendMessage as any).mockImplementation(
-    (message: any, callback?: (response: any) => void) => {
+    (_message: any, callback?: (response: any) => void) => {
       if (callback) {
         callback(response);
       }
@@ -127,9 +127,9 @@ export const mockChromeSendMessage = (response: any) => {
 
 // Chrome Runtime lastError mock
 export const mockChromeRuntimeError = (errorMessage: string) => {
-  chrome.runtime.lastError = { message: errorMessage } as chrome.runtime.LastError;
+  (runtimeMock as any).lastError = { message: errorMessage } as chrome.runtime.LastError;
 };
 
 export const clearChromeRuntimeError = () => {
-  chrome.runtime.lastError = undefined;
+  (runtimeMock as any).lastError = undefined;
 };

@@ -33,7 +33,7 @@ describe('EvaluationService', () => {
     vi.mocked(sessionManager.getFilterCriteria).mockReturnValue('technical content');
 
     // Mock global fetch
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   describe('Basic evaluation', () => {
@@ -91,7 +91,7 @@ describe('EvaluationService', () => {
         quotedTweet: {
           textContent: 'Non-technical content',
         },
-        media: [{ url: 'https://example.com/image.jpg', altText: '' }],
+        media: [{ type: 'image', url: 'https://example.com/image.jpg' }],
       };
 
       const result = await evaluationService.evaluateTweet(request);
@@ -141,7 +141,7 @@ describe('EvaluationService', () => {
         .mockResolvedValueOnce('{"show": true}');  // main image eval
 
       // Mock fetch
-      vi.mocked(global.fetch).mockResolvedValue({
+      vi.mocked(globalThis.fetch).mockResolvedValue({
         ok: true,
         blob: () => Promise.resolve(new Blob()),
       } as Response);
@@ -151,9 +151,9 @@ describe('EvaluationService', () => {
         textContent: 'Random content',
         quotedTweet: {
           textContent: 'More random',
-          media: [{ url: 'https://example.com/quoted.jpg', altText: '' }],
+          media: [{ type: 'image', url: 'https://example.com/quoted.jpg' }],
         },
-        media: [{ url: 'https://example.com/main.jpg', altText: '' }],
+        media: [{ type: 'image', url: 'https://example.com/main.jpg' }],
       };
 
       const result = await evaluationService.evaluateTweet(request);
@@ -172,13 +172,13 @@ describe('EvaluationService', () => {
       const request: EvaluationRequest = {
         tweetId: 'tweet1',
         textContent: 'Text',
-        media: [{ url: 'https://example.com/image.jpg', altText: '' }],
+        media: [{ type: 'image', url: 'https://example.com/image.jpg' }],
       };
 
-      const result = await evaluationService.evaluateTweet(request);
+      await evaluationService.evaluateTweet(request);
 
       // Image fetch should not be called
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
       // Text evaluation only (single call)
       expect(mockSession.prompt).toHaveBeenCalledOnce();
     });
@@ -188,7 +188,7 @@ describe('EvaluationService', () => {
       mockSession.prompt.mockResolvedValue('{"show": false}');
 
       // Fetch times out
-      vi.mocked(global.fetch).mockImplementation(() => {
+      vi.mocked(globalThis.fetch).mockImplementation(() => {
         return new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Timeout')), 10);
         });
@@ -197,7 +197,7 @@ describe('EvaluationService', () => {
       const request: EvaluationRequest = {
         tweetId: 'tweet1',
         textContent: '',
-        media: [{ url: 'https://example.com/image.jpg', altText: '' }],
+        media: [{ type: 'image', url: 'https://example.com/image.jpg' }],
       };
 
       const result = await evaluationService.evaluateTweet(request);
@@ -212,7 +212,7 @@ describe('EvaluationService', () => {
       mockSession.prompt.mockResolvedValue('{"show": false}');
 
       // Fetch fails
-      vi.mocked(global.fetch).mockResolvedValue({
+      vi.mocked(globalThis.fetch).mockResolvedValue({
         ok: false,
         status: 404,
       } as Response);
@@ -220,7 +220,7 @@ describe('EvaluationService', () => {
       const request: EvaluationRequest = {
         tweetId: 'tweet1',
         textContent: '',
-        media: [{ url: 'https://example.com/notfound.jpg', altText: '' }],
+        media: [{ type: 'image', url: 'https://example.com/notfound.jpg' }],
       };
 
       const result = await evaluationService.evaluateTweet(request);
@@ -237,7 +237,7 @@ describe('EvaluationService', () => {
         .mockResolvedValueOnce('Image 2')          // image 2 description
         .mockResolvedValueOnce('{"show": true}');  // image eval
 
-      vi.mocked(global.fetch).mockResolvedValue({
+      vi.mocked(globalThis.fetch).mockResolvedValue({
         ok: true,
         blob: () => Promise.resolve(new Blob()),
       } as Response);
@@ -246,8 +246,8 @@ describe('EvaluationService', () => {
         tweetId: 'tweet1',
         textContent: 'Text',
         media: [
-          { url: 'https://example.com/image1.jpg', altText: '' },
-          { url: 'https://example.com/image2.jpg', altText: '' },
+          { type: 'image', url: 'https://example.com/image1.jpg' },
+          { type: 'image', url: 'https://example.com/image2.jpg' },
         ],
       };
 
@@ -255,7 +255,7 @@ describe('EvaluationService', () => {
 
       expect(result.shouldShow).toBe(true);
       // Fetch should be called twice (in parallel)
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
     });
   });
 

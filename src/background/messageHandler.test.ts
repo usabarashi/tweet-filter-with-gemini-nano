@@ -69,17 +69,20 @@ describe('MessageHandler', () => {
         requestId: 'req-1',
         timestamp: Date.now(),
         config: {
-          filterCriteria: 'technical content',
+          prompt: 'technical content',
           outputLanguage: 'en',
         },
       };
 
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'INIT_RESPONSE',
+        requestId: 'req-1',
         timestamp: Date.now(),
         success: true,
-        canUseSummarization: true,
-        canUseLanguageDetection: false,
+        sessionStatus: {
+          isMultimodal: false,
+          sessionType: 'text-only',
+        },
       });
 
       const response = await messageHandler.handleMessage(message);
@@ -104,9 +107,11 @@ describe('MessageHandler', () => {
       vi.mocked(cacheManager.get).mockResolvedValue(null); // Cache miss
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'EVALUATE_RESPONSE',
+        requestId: 'req-2',
         timestamp: Date.now(),
         tweetId: 'tweet-123',
         shouldShow: true,
+        cacheHit: false,
         evaluationTime: 100,
       });
 
@@ -126,9 +131,11 @@ describe('MessageHandler', () => {
 
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'SESSION_STATUS_RESPONSE',
+        requestId: 'req-3',
         timestamp: Date.now(),
-        isReady: true,
-        canUseSummarization: true,
+        initialized: true,
+        isMultimodal: false,
+        currentConfig: null,
       });
 
       const response = await messageHandler.handleMessage(message);
@@ -246,9 +253,11 @@ describe('MessageHandler', () => {
       vi.mocked(cacheManager.get).mockResolvedValue(null); // Cache miss
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'EVALUATE_RESPONSE',
+        requestId: 'req-9',
         timestamp: Date.now(),
         tweetId: 'tweet-new',
         shouldShow: false,
+        cacheHit: false,
         evaluationTime: 150,
       });
 
@@ -278,9 +287,11 @@ describe('MessageHandler', () => {
       vi.mocked(cacheManager.get).mockResolvedValue(null);
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'EVALUATE_RESPONSE',
+        requestId: 'req-10',
         timestamp: Date.now(),
         tweetId: 'tweet-to-cache',
         shouldShow: true,
+        cacheHit: false,
         evaluationTime: 100,
       });
       vi.mocked(cacheManager.set).mockResolvedValue(undefined);
@@ -305,9 +316,11 @@ describe('MessageHandler', () => {
       vi.mocked(cacheManager.get).mockResolvedValue(null);
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'EVALUATE_RESPONSE',
+        requestId: 'req-11',
         timestamp: Date.now(),
         tweetId: 'tweet-fail-cache',
         shouldShow: true,
+        cacheHit: false,
         evaluationTime: 100,
       });
       vi.mocked(cacheManager.set).mockRejectedValue(new Error('Cache set failed'));
@@ -327,17 +340,20 @@ describe('MessageHandler', () => {
         requestId: 'req-12',
         timestamp: Date.now(),
         config: {
-          filterCriteria: 'machine learning',
+          prompt: 'machine learning',
           outputLanguage: 'ja',
         },
       };
 
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'INIT_RESPONSE',
+        requestId: 'req-12',
         timestamp: Date.now(),
         success: true,
-        canUseSummarization: true,
-        canUseLanguageDetection: true,
+        sessionStatus: {
+          isMultimodal: false,
+          sessionType: 'text-only',
+        },
       });
 
       await messageHandler.handleMessage(message);
@@ -345,7 +361,7 @@ describe('MessageHandler', () => {
       expect(vi.mocked(offscreenManager.sendToOffscreen)).toHaveBeenCalledWith({
         type: 'INIT_REQUEST',
         config: {
-          filterCriteria: 'machine learning',
+          prompt: 'machine learning',
           outputLanguage: 'ja',
         },
       });
@@ -372,9 +388,11 @@ describe('MessageHandler', () => {
       vi.mocked(cacheManager.get).mockResolvedValue(null);
       vi.mocked(offscreenManager.sendToOffscreen).mockResolvedValue({
         type: 'EVALUATE_RESPONSE',
+        requestId: 'req-13',
         timestamp: Date.now(),
         tweetId: 'tweet-complex',
         shouldShow: true,
+        cacheHit: false,
         evaluationTime: 200,
       });
 
