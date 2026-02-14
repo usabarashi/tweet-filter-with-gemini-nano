@@ -3,21 +3,21 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    // グローバルテストAPIを有効化（describe, it, expect等をインポート不要に）
+    // Enable global test APIs (describe, it, expect without imports)
     globals: true,
 
-    // DOM環境のエミュレーション（happy-domは高速）
+    // DOM environment emulation (happy-dom is fast)
     environment: 'happy-dom',
 
-    // テストセットアップファイル
+    // Test setup file
     setupFiles: ['./src/test-setup.ts'],
 
-    // カバレッジ設定
+    // Coverage configuration
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
 
-      // 70%以上のカバレッジ目標（重要パスのみ）
+      // 70%+ coverage target (critical paths only)
       thresholds: {
         lines: 70,
         functions: 70,
@@ -25,7 +25,7 @@ export default defineConfig({
         statements: 70,
       },
 
-      // カバレッジから除外するファイル
+      // Files excluded from coverage
       exclude: [
         'node_modules/',
         'dist/',
@@ -37,14 +37,14 @@ export default defineConfig({
       ],
     },
 
-    // テストタイムアウト（デフォルト5秒）
+    // Test timeout (default 5s)
     testTimeout: 10000,
 
-    // 並列実行の設定
+    // Parallel execution
     maxConcurrency: 5,
   },
 
-  // パスエイリアスの解決（tsconfig.jsonと同じ）
+  // Path alias resolution (matches tsconfig.json)
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
