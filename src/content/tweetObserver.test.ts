@@ -184,12 +184,7 @@ describe('TweetObserver', () => {
       );
     });
 
-    it.skip('should deduplicate identical image URLs (same src)', () => {
-      // TODO: Phase 1 - Enable after fixing implementation bug
-      // Current implementation: checks with foundUrls.has(img.src),
-      // but adds with foundUrls.add(originalUrl) using the normalized URL,
-      // so deduplication does not work correctly.
-      // Fix: should check with foundUrls.has(originalUrl)
+    it('should deduplicate identical image URLs (same src)', () => {
       const article = createTweet('123', 'Tweet', 'user1');
 
       // Add the same src image twice
