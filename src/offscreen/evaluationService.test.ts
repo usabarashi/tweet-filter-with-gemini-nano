@@ -75,7 +75,7 @@ describe('EvaluationService', () => {
 
       const result = await evaluationService.evaluateTweet(request);
 
-      expect(result.shouldShow).toBe(false); // false when not evaluated
+      expect(result.shouldShow).toBe(true); // show by default when no evaluable content
       expect(mockSession.prompt).not.toHaveBeenCalled();
       expect(mockSession.destroy).toHaveBeenCalledOnce();
     });
@@ -202,8 +202,8 @@ describe('EvaluationService', () => {
 
       const result = await evaluationService.evaluateTweet(request);
 
-      // Should return result even on error (image skipped)
-      expect(result.shouldShow).toBe(false);
+      // Show by default when image fetch fails and no text to evaluate
+      expect(result.shouldShow).toBe(true);
       expect(mockSession.destroy).toHaveBeenCalledOnce();
     });
 
@@ -225,8 +225,8 @@ describe('EvaluationService', () => {
 
       const result = await evaluationService.evaluateTweet(request);
 
-      // Should not fail even when image cannot be fetched
-      expect(result.shouldShow).toBe(false);
+      // Show by default when image cannot be fetched and no text to evaluate
+      expect(result.shouldShow).toBe(true);
     });
 
     it('should process multiple images in parallel', async () => {

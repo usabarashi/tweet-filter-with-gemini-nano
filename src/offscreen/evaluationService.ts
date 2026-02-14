@@ -40,10 +40,12 @@ export class EvaluationService {
 
       // Short-circuit evaluation: stop as soon as we find a match
       let shouldShow = false;
+      let evaluated = false;
 
       // Stage 1: Evaluate main text
       if (request.textContent.trim()) {
         shouldShow = await this.evaluateText(request.textContent, clonedSession);
+        evaluated = true;
       }
 
       // Stage 2: If main text didn't match, evaluate quoted tweet text
@@ -56,6 +58,7 @@ export class EvaluationService {
             : 'someone';
           const quotedContent = `[Quoting ${quotedAuthor}: ${quotedText}]`;
           shouldShow = await this.evaluateText(quotedContent, clonedSession);
+          evaluated = true;
         }
       }
 
@@ -65,6 +68,7 @@ export class EvaluationService {
         if (quotedDescriptions.length > 0) {
           const quotedImageText = '[Images in quoted tweet: ' + quotedDescriptions.join('; ') + ']';
           shouldShow = await this.evaluateText(quotedImageText, clonedSession);
+          evaluated = true;
         }
       }
 
@@ -74,7 +78,14 @@ export class EvaluationService {
         if (descriptions.length > 0) {
           const imageText = '[Images in this tweet: ' + descriptions.join('; ') + ']';
           shouldShow = await this.evaluateText(imageText, clonedSession);
+          evaluated = true;
         }
+      }
+
+      // Show tweet by default when no content could be evaluated
+      if (!evaluated) {
+        logger.warn('[EvaluationService] No evaluable content found, showing tweet by default');
+        shouldShow = true;
       }
 
       return {
