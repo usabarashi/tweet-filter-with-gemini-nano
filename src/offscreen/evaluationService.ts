@@ -50,7 +50,10 @@ export class EvaluationService {
       if (!shouldShow && request.quotedTweet) {
         const quotedText = request.quotedTweet.textContent.trim();
         if (quotedText) {
-          const quotedAuthor = request.quotedTweet.author ? `@${request.quotedTweet.author}` : 'someone';
+          const rawAuthor = request.quotedTweet.author?.trim();
+          const quotedAuthor = rawAuthor
+            ? (rawAuthor.startsWith('@') ? rawAuthor : `@${rawAuthor}`)
+            : 'someone';
           const quotedContent = `[Quoting ${quotedAuthor}: ${quotedText}]`;
           shouldShow = await this.evaluateText(quotedContent, clonedSession);
         }
