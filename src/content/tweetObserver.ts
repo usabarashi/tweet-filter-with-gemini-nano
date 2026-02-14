@@ -151,14 +151,15 @@ class TweetObserver {
         return;
       }
 
-      // Skip duplicates
-      if (foundUrls.has(img.src)) {
+      // Normalize URL first, then check for duplicates
+      const normalizedUrl = this.normalizeImageUrl(img.src);
+
+      if (foundUrls.has(normalizedUrl)) {
         return;
       }
 
-      const originalUrl = this.normalizeImageUrl(img.src);
-      foundUrls.add(originalUrl);
-      media.push({ type: 'image', url: originalUrl });
+      foundUrls.add(normalizedUrl);
+      media.push({ type: 'image', url: normalizedUrl });
     });
 
     return media;
