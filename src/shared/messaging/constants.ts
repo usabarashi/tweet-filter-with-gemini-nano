@@ -27,6 +27,6 @@ export const TIMEOUTS = {
 // Offscreen Document Configuration
 export const OFFSCREEN_DOCUMENT = {
   PATH: 'offscreen/index.html',
-  REASON: chrome.offscreen?.Reason?.WORKERS || 'WORKERS' as any,
+  REASON: ((globalThis as any).chrome?.offscreen?.Reason?.WORKERS ?? 'WORKERS') as any,
   JUSTIFICATION: 'Run Gemini Nano AI processing in a Window context',
 } as const;
