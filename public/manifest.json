@@ -5,7 +5,8 @@
   "description": "Filter tweets using on-device AI with Gemini Nano",
 
   "permissions": [
-    "storage"
+    "storage",
+    "offscreen"
   ],
 
   "host_permissions": [
@@ -13,18 +14,24 @@
     "https://x.com/*"
   ],
 
+  "background": {
+    "service_worker": "background/index.js",
+    "type": "module"
+  },
+
   "content_scripts": [
     {
       "matches": [
         "https://twitter.com/*",
         "https://x.com/*"
       ],
-      "js": ["src/content/index.ts"],
+      "js": ["content/index.js"],
+      "css": ["content/index.css"],
       "run_at": "document_idle"
     }
   ],
 
-  "options_page": "src/options/index.html",
+  "options_page": "options/index.html",
 
   "minimum_chrome_version": "131"
 }

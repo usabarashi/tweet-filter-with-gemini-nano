@@ -10,11 +10,24 @@ const nodeEnv = process.env.NODE_ENV || 'production';
 
 // Path configuration
 const paths = {
+  background: {
+    entry: 'src/background/index.ts',
+    outDir: 'dist/background',
+    outJs: 'dist/background/index.js',
+  },
+  offscreen: {
+    entry: 'src/offscreen/index.ts',
+    outDir: 'dist/offscreen',
+    outJs: 'dist/offscreen/index.js',
+    srcHtml: 'src/offscreen/index.html',
+    outHtml: 'dist/offscreen/index.html',
+  },
   content: {
     entry: 'src/content/index.ts',
     outDir: 'dist/content',
     outJs: 'dist/content/index.js',
-    outCss: 'content/index.css', // Referenced in manifest.json
+    srcCss: 'src/content/styles.css',
+    outCss: 'dist/content/index.css',
   },
   options: {
     entry: 'src/options/index.ts',
@@ -34,6 +47,8 @@ const paths = {
 try {
   // Clean dist directory and create subdirectories
   rmSync(outdir, { recursive: true, force: true });
+  mkdirSync(paths.background.outDir, { recursive: true });
+  mkdirSync(paths.offscreen.outDir, { recursive: true });
   mkdirSync(paths.content.outDir, { recursive: true });
   mkdirSync(paths.options.outDir, { recursive: true });
 
@@ -49,8 +64,24 @@ try {
     }
   };
 
-  // Parallel builds for content script and options page
+  // Parallel builds for all scripts
   await Promise.all([
+    // Build background service worker
+    esbuild.build({
+      entryPoints: [paths.background.entry],
+      bundle: true,
+      outfile: paths.background.outJs,
+      format: 'esm', // ES modules for service worker
+      ...buildConfig,
+    }),
+    // Build offscreen document script
+    esbuild.build({
+      entryPoints: [paths.offscreen.entry],
+      bundle: true,
+      outfile: paths.offscreen.outJs,
+      format: 'iife', // IIFE for window context
+      ...buildConfig,
+    }),
     // Build content script
     esbuild.build({
       entryPoints: [paths.content.entry],
@@ -69,28 +100,33 @@ try {
     }),
   ]);
 
-  // Process and copy HTML file (update script reference)
+  // Copy offscreen HTML
+  copyFileSync(
+    resolve(__dirname, paths.offscreen.srcHtml),
+    paths.offscreen.outHtml
+  );
+
+  // Copy content script CSS
+  copyFileSync(
+    resolve(__dirname, paths.content.srcCss),
+    paths.content.outCss
+  );
+
+  // Process and copy options HTML file (update script reference)
   let html = readFileSync(resolve(__dirname, paths.options.srcHtml), 'utf-8');
   html = html.replace(/src\s*=\s*["']index\.ts["']/, 'src="index.js"');
   writeFileSync(paths.options.outHtml, html);
 
-  // Copy CSS file
+  // Copy options CSS file
   copyFileSync(
     resolve(__dirname, paths.options.srcCss),
     paths.options.outCss
   );
 
-  // Update manifest.json to use built files
-  const manifest = JSON.parse(readFileSync(resolve(__dirname, paths.manifest.src), 'utf-8'));
-
-  // Update file references to point to built JS and CSS files
-  manifest.content_scripts[0].js = ['content/index.js'];
-  manifest.content_scripts[0].css = [paths.content.outCss];
-  manifest.options_page = 'options/index.html';
-
-  writeFileSync(
-    paths.manifest.out,
-    JSON.stringify(manifest, null, 2)
+  // Copy manifest.json (already uses correct paths)
+  copyFileSync(
+    resolve(__dirname, paths.manifest.src),
+    paths.manifest.out
   );
 
   console.log('✓ Build completed successfully');

@@ -4,14 +4,28 @@
   "description": "Chrome Extension to filter tweets using Gemini Nano",
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && node build.mjs"
+    "build": "tsc --noEmit && node build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
-  "keywords": ["chrome-extension", "gemini-nano", "twitter", "ai"],
+  "keywords": [
+    "chrome-extension",
+    "gemini-nano",
+    "twitter",
+    "ai"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
     "@types/chrome": "^0.1.32",
+    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
     "esbuild": "^0.27.2",
-    "typescript": "^5.9.3"
+    "happy-dom": "^20.4.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
