@@ -1,4 +1,5 @@
 import type { MediaData } from '../types/tweet';
+import { TIMEOUTS } from '../shared/messaging/constants';
 import { sessionManager } from './sessionManager';
 import { logger } from '../shared/logger';
 
@@ -98,7 +99,7 @@ export class EvaluationService {
 
   private async fetchImageAsBlob(url: string): Promise<Blob | null> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), TIMEOUTS.IMAGE_FETCH);
 
     try {
       const response = await fetch(url, { signal: controller.signal });
