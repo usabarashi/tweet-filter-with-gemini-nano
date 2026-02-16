@@ -129,7 +129,7 @@ export class EvaluationService {
 
   private async promptWithTimeout(
     session: LanguageModelSession,
-    input: string | Array<{ role: string; content: { type: string; text?: string; data?: Blob }[] }>,
+    input: string | Array<{ role: string; content: Array<{ type: 'text'; value: string } | { type: 'image'; value: Blob }> }>,
   ): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUTS.PROMPT);
@@ -164,8 +164,8 @@ export class EvaluationService {
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Describe this image in 1-2 sentences. Focus on the main subject and content.' },
-              { type: 'image', data: blob }
+              { type: 'text', value: 'Describe this image in 1-2 sentences. Focus on the main subject and content.' },
+              { type: 'image', value: blob }
             ]
           }
         ]);
