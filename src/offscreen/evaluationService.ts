@@ -129,7 +129,7 @@ export class EvaluationService {
 
   private async promptWithTimeout(
     session: LanguageModelSession,
-    input: string | Array<{ role: string; content: Array<{ type: string; value: string | Blob }> }>,
+    input: string | Array<{ role: string; content: Array<{ type: 'text'; value: string } | { type: 'image'; value: Blob }> }>,
   ): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUTS.PROMPT);

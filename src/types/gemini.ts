@@ -32,7 +32,7 @@ declare global {
 
   interface LanguageModelSession {
     prompt(text: string, options?: { signal?: AbortSignal }): Promise<string>;
-    prompt(messages: Array<{ role: string; content: Array<{ type: string; value: string | Blob }> }>, options?: { signal?: AbortSignal }): Promise<string>;
+    prompt(messages: Array<{ role: string; content: Array<{ type: 'text'; value: string } | { type: 'image'; value: Blob }> }>, options?: { signal?: AbortSignal }): Promise<string>;
     promptStreaming(text: string): ReadableStream<string>;
     destroy(): Promise<void>;
     inputUsage: number;
