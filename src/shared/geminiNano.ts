@@ -178,8 +178,8 @@ class GeminiNanoService {
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Describe this image in 1-2 sentences. Focus on the main subject and content.' },
-              { type: 'image', data: blob }
+              { type: 'text', value: 'Describe this image in 1-2 sentences. Focus on the main subject and content.' },
+              { type: 'image', value: blob }
             ]
           }
         ]);
