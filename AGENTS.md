@@ -90,7 +90,7 @@ npm test
 
 ## Project Structure
 
-```
+```text
 src/
   entries/           -- JS entry points (import PureScript output)
   FFI/               -- Foreign Function Interface
@@ -115,7 +115,7 @@ test/
 
 4 Chrome Extension components communicate via `chrome.runtime.sendMessage`:
 
-```
+```text
 Content Script  -->  Background (Service Worker)  -->  Offscreen Document
   (tweet DOM)        (message routing, cache)          (Gemini Nano sessions)
 ```
