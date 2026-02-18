@@ -16,8 +16,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
+
+      - name: Setup PureScript
+        uses: purescript-contrib/setup-purescript@7effce74b49c9325e8ec856b109582b458826eaa # main
+        with:
+          purescript: '0.15.15'
 
       - name: Install dependencies
         run: npm ci
