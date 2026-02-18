@@ -1,5 +1,5 @@
 import { build } from 'vite';
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, copyFileSync, rmSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -74,9 +74,6 @@ try {
   }
 
   // Copy static assets
-  mkdirSync(resolve(outdir, 'offscreen'), { recursive: true });
-  mkdirSync(resolve(outdir, 'options'), { recursive: true });
-  mkdirSync(resolve(outdir, 'content'), { recursive: true });
 
   // manifest.json
   copyFileSync(
