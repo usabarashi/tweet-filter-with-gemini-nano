@@ -168,6 +168,4 @@ node build.mjs         # 4 entry points bundled
 npx spago test         # 29 tests passing
 ```
 
-Checklist reference: `docs/FUNCTIONAL_IDIOM_CHECKLIST.md`
-
 For manual testing, load `dist/` as an unpacked extension in `chrome://extensions/` (Developer mode).
