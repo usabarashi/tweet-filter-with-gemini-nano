@@ -1,4 +1,4 @@
-import * as esbuild from 'esbuild';
+import { build } from 'vite';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -7,124 +7,108 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const outdir = resolve(__dirname, 'dist');
 const nodeEnv = process.env.NODE_ENV || 'production';
+const isDev = nodeEnv === 'development';
 
-// Path configuration
-const paths = {
-  background: {
-    entry: 'src/background/index.ts',
-    outDir: 'dist/background',
-    outJs: 'dist/background/index.js',
+// Build entries: each maps a PureScript module to a Chrome extension component
+const entries = [
+  {
+    name: 'background',
+    entry: resolve(__dirname, 'src/entries/background.js'),
+    outDir: resolve(outdir, 'background'),
+    format: 'es',
   },
-  offscreen: {
-    entry: 'src/offscreen/index.ts',
-    outDir: 'dist/offscreen',
-    outJs: 'dist/offscreen/index.js',
-    srcHtml: 'src/offscreen/index.html',
-    outHtml: 'dist/offscreen/index.html',
+  {
+    name: 'offscreen',
+    entry: resolve(__dirname, 'src/entries/offscreen.js'),
+    outDir: resolve(outdir, 'offscreen'),
+    format: 'iife',
+    globalName: 'TweetFilterOffscreen',
   },
-  content: {
-    entry: 'src/content/index.ts',
-    outDir: 'dist/content',
-    outJs: 'dist/content/index.js',
+  {
+    name: 'content',
+    entry: resolve(__dirname, 'src/entries/content.js'),
+    outDir: resolve(outdir, 'content'),
+    format: 'iife',
+    globalName: 'TweetFilterContent',
   },
-  options: {
-    entry: 'src/options/index.ts',
-    outDir: 'dist/options',
-    outJs: 'dist/options/index.js',
-    srcHtml: 'src/options/index.html',
-    outHtml: 'dist/options/index.html',
-    srcCss: 'src/options/styles.css',
-    outCss: 'dist/options/styles.css',
+  {
+    name: 'options',
+    entry: resolve(__dirname, 'src/entries/options.js'),
+    outDir: resolve(outdir, 'options'),
+    format: 'iife',
+    globalName: 'TweetFilterOptions',
   },
-  manifest: {
-    src: 'public/manifest.json',
-    out: 'dist/manifest.json',
-  },
-};
+];
 
 try {
-  // Clean dist directory and create subdirectories
+  // Clean dist directory
   rmSync(outdir, { recursive: true, force: true });
-  mkdirSync(paths.background.outDir, { recursive: true });
-  mkdirSync(paths.offscreen.outDir, { recursive: true });
-  mkdirSync(paths.content.outDir, { recursive: true });
-  mkdirSync(paths.options.outDir, { recursive: true });
 
-  // Build configuration
-  const buildConfig = {
-    platform: 'browser',
-    target: 'chrome131',
-    sourcemap: nodeEnv === 'development',
-    minify: nodeEnv === 'production',
-    treeShaking: true,
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(nodeEnv)
-    }
-  };
+  // Build each entry point with Vite
+  for (const { name, entry, outDir, format, globalName } of entries) {
+    await build({
+      configFile: false,
+      publicDir: false,
+      build: {
+        lib: {
+          entry,
+          formats: [format],
+          fileName: () => 'index.js',
+          ...(globalName ? { name: globalName } : {}),
+        },
+        outDir,
+        emptyOutDir: true,
+        target: 'chrome131',
+        minify: !isDev,
+        sourcemap: isDev,
+      },
+      resolve: {
+        alias: {
+          '~ps': resolve(__dirname, 'output'),
+        },
+      },
+      logLevel: 'warn',
+    });
 
-  // Parallel builds for all scripts
-  await Promise.all([
-    // Build background service worker
-    esbuild.build({
-      entryPoints: [paths.background.entry],
-      bundle: true,
-      outfile: paths.background.outJs,
-      format: 'esm', // ES modules for service worker
-      ...buildConfig,
-    }),
-    // Build offscreen document script
-    esbuild.build({
-      entryPoints: [paths.offscreen.entry],
-      bundle: true,
-      outfile: paths.offscreen.outJs,
-      format: 'iife', // IIFE for window context
-      ...buildConfig,
-    }),
-    // Build content script
-    esbuild.build({
-      entryPoints: [paths.content.entry],
-      bundle: true,
-      outfile: paths.content.outJs,
-      format: 'iife',
-      ...buildConfig,
-    }),
-    // Build options page script
-    esbuild.build({
-      entryPoints: [paths.options.entry],
-      bundle: true,
-      outfile: paths.options.outJs,
-      format: 'iife',
-      ...buildConfig,
-    }),
-  ]);
+    console.log(`  built ${name} (${format})`);
+  }
 
-  // Copy offscreen HTML
+  // Copy static assets
+  mkdirSync(resolve(outdir, 'offscreen'), { recursive: true });
+  mkdirSync(resolve(outdir, 'options'), { recursive: true });
+  mkdirSync(resolve(outdir, 'content'), { recursive: true });
+
+  // manifest.json
   copyFileSync(
-    resolve(__dirname, paths.offscreen.srcHtml),
-    paths.offscreen.outHtml
+    resolve(__dirname, 'public/manifest.json'),
+    resolve(outdir, 'manifest.json')
   );
 
-  // Content script CSS is emitted by esbuild (via import './styles.css' in index.ts)
-
-  // Process and copy options HTML file (update script reference)
-  let html = readFileSync(resolve(__dirname, paths.options.srcHtml), 'utf-8');
-  html = html.replace(/src\s*=\s*["']index\.ts["']/, 'src="index.js"');
-  writeFileSync(paths.options.outHtml, html);
-
-  // Copy options CSS file
+  // Offscreen HTML
   copyFileSync(
-    resolve(__dirname, paths.options.srcCss),
-    paths.options.outCss
+    resolve(__dirname, 'src/offscreen/index.html'),
+    resolve(outdir, 'offscreen/index.html')
   );
 
-  // Copy manifest.json (already uses correct paths)
+  // Options HTML (update script reference from .ts to .js)
+  let optionsHtml = readFileSync(resolve(__dirname, 'src/options/index.html'), 'utf-8');
+  optionsHtml = optionsHtml.replace(/src\s*=\s*["']index\.ts["']/, 'src="index.js"');
+  writeFileSync(resolve(outdir, 'options/index.html'), optionsHtml);
+
+  // Options CSS
   copyFileSync(
-    resolve(__dirname, paths.manifest.src),
-    paths.manifest.out
+    resolve(__dirname, 'src/options/styles.css'),
+    resolve(outdir, 'options/styles.css')
   );
 
-  console.log('✓ Build completed successfully');
+  // Content CSS
+  copyFileSync(
+    resolve(__dirname, 'src/content/styles.css'),
+    resolve(outdir, 'content/index.css')
+  );
+
+  console.log('Build completed successfully');
 } catch (error) {
-  console.error('✗ Build failed:', error);
+  console.error('Build failed:', error);
   process.exit(1);
 }
