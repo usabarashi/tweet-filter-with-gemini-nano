@@ -1,0 +1,33 @@
+package:
+  name: tweet-filter
+  dependencies:
+    - aff
+    - arrays
+    - console
+    - effect
+    - either
+    - exceptions
+    - foldable-traversable
+    - foreign
+    - foreign-object
+    - js-promise-aff
+    - maybe
+    - newtype
+    - ordered-collections
+    - prelude
+    - refs
+    - simple-json
+    - strings
+    - transformers
+    - tuples
+    - web-dom
+    - web-events
+    - web-html
+  test:
+    main: Test.Main
+    dependencies:
+      - spec
+
+workspace:
+  packageSet:
+    registry: 68.3.1

@@ -3,7 +3,8 @@ node_modules/
 
 # Build output
 dist/
-*.tsbuildinfo
+output/
+.spago/
 
 # Environment variables
 .env

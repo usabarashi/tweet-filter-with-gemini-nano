@@ -4,28 +4,22 @@
   "description": "Chrome Extension to filter tweets using Gemini Nano",
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && node build.mjs",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "build:ps": "mkdir -p .spago-home && HOME=$PWD/.spago-home XDG_CACHE_HOME=$PWD/.cache npx spago build",
+    "build:bundle": "node build.mjs",
+    "build": "npm run build:ps && npm run build:bundle",
+    "test": "mkdir -p .spago-home && HOME=$PWD/.spago-home XDG_CACHE_HOME=$PWD/.cache npx spago test"
   },
   "keywords": [
     "chrome-extension",
     "gemini-nano",
     "twitter",
-    "ai"
+    "ai",
+    "purescript"
   ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@types/chrome": "^0.1.36",
-    "@vitest/coverage-v8": "^4.0.18",
-    "@vitest/ui": "^4.0.18",
-    "esbuild": "^0.27.2",
-    "happy-dom": "^20.4.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "spago": "^1.0.3",
+    "vite": "^6.2.0"
   }
 }
