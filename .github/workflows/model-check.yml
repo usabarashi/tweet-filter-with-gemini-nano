@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - 'modeling/**'
+      - '.github/workflows/model-check.yml'
   pull_request:
     paths:
       - 'modeling/**'
+      - '.github/workflows/model-check.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
