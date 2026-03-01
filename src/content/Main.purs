@@ -77,9 +77,14 @@ initializeContentScript state = do
     Ref.write normalizedConfig state.configRef
 
   when (mode == FilteringEnabled) do
+    liftEffect $ Ref.write true state.initInProgressRef
     result <- try $ ensureInitializedAndEnabled state normalizedConfig
+    liftEffect $ Ref.write false state.initInProgressRef
     case result of
-      Right _ -> pure unit
+      Right _ -> do
+        latestConfig <- liftEffect $ Ref.read state.configRef
+        when (runtimeConfigChanged normalizedConfig latestConfig) $
+          liftEffect $ ensureInitializedAndEnabledAsync state latestConfig
       Left err -> do
         liftEffect $ Logger.logError state.loggerRef ("[Tweet Filter] Initialization failed: " <> show err)
         liftEffect $ scheduleRetry state
