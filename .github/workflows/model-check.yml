@@ -1,0 +1,49 @@
+name: Model Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'modeling/**'
+      - '.github/workflows/model-check.yml'
+  pull_request:
+    paths:
+      - 'modeling/**'
+      - '.github/workflows/model-check.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tlc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Download TLC
+        run: |
+          set -euo pipefail
+          curl -fsSL -o tla2tools.jar \
+            https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+          echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  tla2tools.jar" | sha256sum -c -
+
+      - name: Run TLC model checker
+        run: |
+          java -XX:+UseParallelGC -Xmx6g \
+            -cp tla2tools.jar tlc2.TLC \
+            -config modeling/TweetFilter.cfg \
+            -workers auto \
+            modeling/TweetFilter.tla

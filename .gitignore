@@ -56,6 +56,9 @@ temp/
 *.pem
 *.zip
 
+# TLA+ / TLC
+modeling/states/
+
 # Nix
 .direnv/
 .devenv/
