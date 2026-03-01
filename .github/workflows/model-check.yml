@@ -6,9 +6,12 @@ on:
     paths:
       - 'modeling/**'
   pull_request:
-    branches: [main]
     paths:
       - 'modeling/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
