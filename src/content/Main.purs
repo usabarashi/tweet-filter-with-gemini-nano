@@ -7,7 +7,7 @@ import Content.TweetObserver as TweetObserver
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe, isNothing)
 import Effect (Effect)
-import Effect.Aff (Aff, finally, launchAff_, try)
+import Effect.Aff (Aff, launchAff_, try)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import FFI.Chrome.Runtime as Runtime
@@ -172,15 +172,18 @@ ensureInitializedAndEnabledAsync state config = do
   inProgress <- Ref.read state.initInProgressRef
   unless inProgress do
     Ref.write true state.initInProgressRef
-    launchAff_ $ finally (liftEffect $ Ref.write false state.initInProgressRef) do
+    launchAff_ do
       result <- try $ ensureInitializedAndEnabled state config
+      liftEffect $ Ref.write false state.initInProgressRef
       case result of
         Left err -> do
           liftEffect $ Logger.logError state.loggerRef ("[Tweet Filter] Async initialization failed: " <> show err)
           liftEffect $ when (classifyFilteringMode config == FilteringEnabled) $
             scheduleRetry state
-        Right _ ->
-          pure unit
+        Right _ -> do
+          latestConfig <- liftEffect $ Ref.read state.configRef
+          when (runtimeConfigChanged config latestConfig) $
+            liftEffect $ ensureInitializedAndEnabledAsync state latestConfig
 
 classifyFilteringMode :: FilterConfig -> FilteringMode
 classifyFilteringMode config =
