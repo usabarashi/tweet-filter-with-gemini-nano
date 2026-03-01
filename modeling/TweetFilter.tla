@@ -611,10 +611,6 @@ CacheBounded == CacheSize <= MaxCacheSize
 \* Evaluation queue never exceeds maximum length
 EvalQueueBounded == Len(evalQueue) <= MaxQueueLen
 
-\* At most one evaluation is in progress at a time (serial processing)
-AtMostOneEvaluation ==
-    evalInProgress /= "None" => Len(evalQueue) >= 0
-
 \* Cache entries are consistent with LRU order
 CacheOrderConsistency ==
     \A t \in DOMAIN cache : SeqContains(cacheOrder, t)
