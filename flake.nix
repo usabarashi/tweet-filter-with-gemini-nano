@@ -6,22 +6,28 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            # Node.js runtime and package manager (>=22.5 required for spago 1.x)
-            nodejs_22
+            # Node.js LTS (>=22.5 required for spago 1.x)
+            nodejs
 
             # PureScript compiler (spago is installed via npm)
             purescript
 
-            # Git for version control
-            git
+            # TLA+ model checker
+            tlaplus
           ];
 
           shellHook = ''
@@ -34,6 +40,7 @@
             echo "  npm install       - Install dependencies (includes spago)"
             echo "  npm run build     - Build the extension (spago build + Vite bundle)"
             echo "  npm test          - Run PureScript tests"
+            echo "  tlc modeling/TweetFilter.tla  - Run TLA+ model checker"
             echo ""
             echo "Chrome Extension Setup:"
             echo "  1. Build: npm run build"

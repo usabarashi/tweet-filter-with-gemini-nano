@@ -7,7 +7,7 @@ import Content.TweetObserver as TweetObserver
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe, isNothing)
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_, try)
+import Effect.Aff (Aff, finally, launchAff_, try)
 import Effect.Class (liftEffect)
 import Effect.Ref as Ref
 import FFI.Chrome.Runtime as Runtime
@@ -55,16 +55,18 @@ main = do
     configChangeCleanupRef <- Ref.new (pure unit :: Effect Unit)
     configRef <- Ref.new defaultFilterConfig
     activeRuntimeRef <- Ref.new Nothing
-    setupConfigChangeListener loggerRef retryTimerRef configChangeCleanupRef configRef activeRuntimeRef
-    launchAff_ $ initializeContentScript loggerRef retryTimerRef configRef activeRuntimeRef
+    initInProgressRef <- Ref.new false
+    setupConfigChangeListener loggerRef retryTimerRef configChangeCleanupRef configRef activeRuntimeRef initInProgressRef
+    launchAff_ $ initializeContentScript loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef
 
 initializeContentScript
   :: Ref.Ref Logger.LoggerState
   -> Ref.Ref (Maybe Int)
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
+  -> Ref.Ref Boolean
   -> Aff Unit
-initializeContentScript loggerRef retryTimerRef configRef activeRuntimeRef = do
+initializeContentScript loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef = do
   config <- Storage.getFilterConfig
   let normalizedConfig = normalizeFilterConfig config
   let mode = classifyFilteringMode normalizedConfig
@@ -72,20 +74,21 @@ initializeContentScript loggerRef retryTimerRef configRef activeRuntimeRef = do
     Ref.write normalizedConfig configRef
 
   when (mode == FilteringEnabled) do
-    result <- try $ ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef normalizedConfig
+    result <- try $ ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef normalizedConfig
     case result of
       Right _ -> pure unit
       Left err -> do
         liftEffect $ Logger.logError loggerRef ("[Tweet Filter] Initialization failed: " <> show err)
-        liftEffect $ scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef
+        liftEffect $ scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef initInProgressRef
 
 scheduleRetry
   :: Ref.Ref (Maybe Int)
   -> Ref.Ref Logger.LoggerState
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
+  -> Ref.Ref Boolean
   -> Effect Unit
-scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef = do
+scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef initInProgressRef = do
   EffectUtils.clearMaybeRef retryTimerRef WebApi.clearTimeout
   tid <- WebApi.setTimeout 30000 do
     Ref.write Nothing retryTimerRef
@@ -93,7 +96,7 @@ scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef = do
     when valid do
       config <- Ref.read configRef
       when (classifyFilteringMode config == FilteringEnabled) $
-        ensureInitializedAndEnabledAsync loggerRef retryTimerRef configRef activeRuntimeRef config
+        ensureInitializedAndEnabledAsync initInProgressRef loggerRef retryTimerRef configRef activeRuntimeRef config
   Ref.write (Just tid) retryTimerRef
 
 ensureInitializedAndEnabled
@@ -101,16 +104,17 @@ ensureInitializedAndEnabled
   -> Ref.Ref (Maybe Int)
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
+  -> Ref.Ref Boolean
   -> FilterConfig
   -> Aff Unit
-ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef config = do
+ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef config = do
   resp <- Client.initialize config.prompt config.outputLanguage
   case decodeInitOutcome (Types.decodeMessage resp) of
     InitSucceeded ->
       liftEffect $ enableFiltering loggerRef activeRuntimeRef
     InitFailed reason -> do
       liftEffect $ Logger.logError loggerRef ("[Tweet Filter] Service worker initialization failed: " <> reason)
-      liftEffect $ scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef
+      liftEffect $ scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef initInProgressRef
 
 setupUrlChangeDetection
   :: Ref.Ref Logger.LoggerState
@@ -148,8 +152,9 @@ setupConfigChangeListener
   -> Ref.Ref (Effect Unit)
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
+  -> Ref.Ref Boolean
   -> Effect Unit
-setupConfigChangeListener loggerRef retryTimerRef configChangeCleanupRef configRef activeRuntimeRef = do
+setupConfigChangeListener loggerRef retryTimerRef configChangeCleanupRef configRef activeRuntimeRef initInProgressRef = do
   EffectUtils.runCleanupRef configChangeCleanupRef
   timeoutRef <- Ref.new Nothing
   cleanupRaw <- Storage.onFilterConfigChange \newConfig -> do
@@ -159,7 +164,7 @@ setupConfigChangeListener loggerRef retryTimerRef configChangeCleanupRef configR
       let normalizedConfig = normalizeFilterConfig newConfig
       let action = decideTransition prevConfig normalizedConfig
       Ref.write normalizedConfig configRef
-      applyTransition loggerRef retryTimerRef configRef activeRuntimeRef action normalizedConfig
+      applyTransition loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef action normalizedConfig
     Ref.write (Just tid) timeoutRef
 
   let cleanup = do
@@ -172,37 +177,42 @@ applyTransition
   -> Ref.Ref (Maybe Int)
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
+  -> Ref.Ref Boolean
   -> TransitionAction
   -> FilterConfig
   -> Effect Unit
-applyTransition loggerRef retryTimerRef configRef activeRuntimeRef action newConfig =
+applyTransition loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef action newConfig =
   case action of
     DisableAction ->
       disableFiltering activeRuntimeRef retryTimerRef
     EnableAction ->
-      ensureInitializedAndEnabledAsync loggerRef retryTimerRef configRef activeRuntimeRef newConfig
+      ensureInitializedAndEnabledAsync initInProgressRef loggerRef retryTimerRef configRef activeRuntimeRef newConfig
     ReconfigureAction ->
-      ensureInitializedAndEnabledAsync loggerRef retryTimerRef configRef activeRuntimeRef newConfig
+      ensureInitializedAndEnabledAsync initInProgressRef loggerRef retryTimerRef configRef activeRuntimeRef newConfig
     NoTransition ->
       pure unit
 
 ensureInitializedAndEnabledAsync
-  :: Ref.Ref Logger.LoggerState
+  :: Ref.Ref Boolean
+  -> Ref.Ref Logger.LoggerState
   -> Ref.Ref (Maybe Int)
   -> Ref.Ref FilterConfig
   -> Ref.Ref (Maybe ActiveRuntime)
   -> FilterConfig
   -> Effect Unit
-ensureInitializedAndEnabledAsync loggerRef retryTimerRef configRef activeRuntimeRef config =
-  launchAff_ do
-    result <- try $ ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef config
-    case result of
-      Left err -> do
-        liftEffect $ Logger.logError loggerRef ("[Tweet Filter] Async initialization failed: " <> show err)
-        liftEffect $ when (classifyFilteringMode config == FilteringEnabled) $
-          scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef
-      Right _ ->
-        pure unit
+ensureInitializedAndEnabledAsync initInProgressRef loggerRef retryTimerRef configRef activeRuntimeRef config = do
+  inProgress <- Ref.read initInProgressRef
+  unless inProgress do
+    Ref.write true initInProgressRef
+    launchAff_ $ finally (liftEffect $ Ref.write false initInProgressRef) do
+      result <- try $ ensureInitializedAndEnabled loggerRef retryTimerRef configRef activeRuntimeRef initInProgressRef config
+      case result of
+        Left err -> do
+          liftEffect $ Logger.logError loggerRef ("[Tweet Filter] Async initialization failed: " <> show err)
+          liftEffect $ when (classifyFilteringMode config == FilteringEnabled) $
+            scheduleRetry retryTimerRef loggerRef configRef activeRuntimeRef initInProgressRef
+        Right _ ->
+          pure unit
 
 classifyFilteringMode :: FilterConfig -> FilteringMode
 classifyFilteringMode config =
