@@ -1,7 +1,11 @@
 // FFI for chrome.runtime API
 
 export const isContextValid = () => {
-  return !!(chrome.runtime && chrome.runtime.id);
+  try {
+    return !!(typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id);
+  } catch (_) {
+    return false;
+  }
 };
 
 export const sendMessageImpl = (msg) => () => {

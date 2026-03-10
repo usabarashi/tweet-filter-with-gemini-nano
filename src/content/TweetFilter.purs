@@ -121,21 +121,25 @@ processLoop ref generation = do
           case result of
             Right _ -> pure unit
             Left err -> do
-              -- Check if extension context is invalidated
               valid <- liftEffect Runtime.isContextValid
-              unless valid do
+              if not valid then do
                 liftEffect $ withLogger ref \logger ->
                   Logger.logError logger "[Tweet Filter] Extension context invalidated, stopping queue"
                 liftEffect $ Ref.modify_ (_ { queue = emptyQueue }) ref
-              liftEffect $ withLogger ref \logger ->
-                Logger.logError logger ("[Tweet Filter] Failed to evaluate tweet: " <> show err)
+              else
+                liftEffect $ withLogger ref \logger ->
+                  Logger.logError logger ("[Tweet Filter] Failed to evaluate tweet: " <> show err)
           liftEffect $ Dom.markAsProcessed tweet.element
 
-        -- Check generation again before continuing
-        stale' <- liftEffect $ isStaleGeneration ref generation
-        unless stale' do
-          Aff.delay (Aff.Milliseconds (toNumber delayBetweenBatches))
-          processLoop ref generation
+        -- Stop loop if extension context was invalidated
+        contextValid <- liftEffect Runtime.isContextValid
+        when contextValid do
+          stale' <- liftEffect $ isStaleGeneration ref generation
+          unless stale' do
+            Aff.delay (Aff.Milliseconds (toNumber delayBetweenBatches))
+            stillValid <- liftEffect Runtime.isContextValid
+            when stillValid $
+              processLoop ref generation
 
 -- | Send evaluation request and act on the result.
 -- | Decodes the response with the typed decoder for type-safe field access.
