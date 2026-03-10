@@ -137,7 +137,9 @@ processLoop ref generation = do
           stale' <- liftEffect $ isStaleGeneration ref generation
           unless stale' do
             Aff.delay (Aff.Milliseconds (toNumber delayBetweenBatches))
-            processLoop ref generation
+            stillValid <- liftEffect Runtime.isContextValid
+            when stillValid $
+              processLoop ref generation
 
 -- | Send evaluation request and act on the result.
 -- | Decodes the response with the typed decoder for type-safe field access.
