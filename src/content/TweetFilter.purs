@@ -132,8 +132,8 @@ processLoop ref generation = do
           liftEffect $ Dom.markAsProcessed tweet.element
 
         -- Stop loop if extension context was invalidated
-        valid <- liftEffect Runtime.isContextValid
-        when valid do
+        contextValid <- liftEffect Runtime.isContextValid
+        when contextValid do
           stale' <- liftEffect $ isStaleGeneration ref generation
           unless stale' do
             Aff.delay (Aff.Milliseconds (toNumber delayBetweenBatches))
