@@ -85,18 +85,8 @@ cleanupAll state = do
   -- Remove storage listeners
   EffectUtils.runCleanupRef state.configChangeCleanupRef
   EffectUtils.runCleanupRef state.loggerCleanupRef
-  -- Cancel retry timer
-  cancelRetryTimer state.retryTimerRef
-  -- Tear down active runtime
-  mRuntime <- Ref.read state.activeRuntimeRef
-  case mRuntime of
-    Nothing -> pure unit
-    Just runtime -> do
-      stopUrlWatcher runtime.intervalIdRef runtime.popstateCleanupRef
-      Ref.write false runtime.urlWatchActiveRef
-      TweetObserver.stop runtime.observerRef
-      TweetFilter.destroy runtime.filterRef
-  Ref.write Nothing state.activeRuntimeRef
+  -- Cancel retry timer and tear down active runtime
+  disableFiltering state.activeRuntimeRef state.retryTimerRef
 
 initializeContentScript :: ContentScriptState -> Aff Unit
 initializeContentScript state = do
