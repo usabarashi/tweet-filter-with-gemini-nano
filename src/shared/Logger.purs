@@ -24,15 +24,22 @@ newSimpleLogger showLogs = Ref.new { showLogs }
 -- | Requires chrome.storage access (service worker, content script, options page).
 newLogger :: Effect (Ref LoggerState)
 newLogger = do
+  result <- newLoggerWithCleanup
+  pure result.loggerRef
+
+-- | Create a new logger and return a cleanup function for the storage listener.
+-- | Use this in content scripts where the lifecycle is not Chrome-managed.
+newLoggerWithCleanup :: Effect { loggerRef :: Ref LoggerState, loggerCleanup :: Effect Unit }
+newLoggerWithCleanup = do
   ref <- Ref.new { showLogs: false }
   -- Initialize from stored config asynchronously
   launchAff_ do
     config <- Storage.getFilterConfig
     liftEffect $ Ref.modify_ (_ { showLogs = config.showStatistics }) ref
   -- Listen for config changes
-  void $ Storage.onFilterConfigChange \newConfig ->
+  cleanup <- Storage.onFilterConfigChange \newConfig ->
     Ref.modify_ (_ { showLogs = newConfig.showStatistics }) ref
-  pure ref
+  pure { loggerRef: ref, loggerCleanup: cleanup }
 
 -- | Log message (only if showStatistics is enabled)
 log :: Ref LoggerState -> String -> Effect Unit

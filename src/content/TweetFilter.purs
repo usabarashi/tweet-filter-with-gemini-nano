@@ -19,7 +19,7 @@ import Effect.Class (liftEffect)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import FFI.Chrome.Runtime as Runtime
-import Shared.Constants (delayBetweenBatches)
+import Shared.Constants (delayBetweenBatches, maxQueueSize)
 import Shared.Logger as Logger
 import Shared.Messaging.Client as Client
 import Shared.Messaging.Types as Types
@@ -48,6 +48,9 @@ emptyQueue = { front: [], back: [] }
 
 enqueueQueue :: TweetData -> TweetQueue -> TweetQueue
 enqueueQueue tweet q = q { back = Array.cons tweet q.back }
+
+queueSize :: TweetQueue -> Int
+queueSize q = Array.length q.front + Array.length q.back
 
 dequeueQueue :: TweetQueue -> Maybe { item :: TweetData, next :: TweetQueue }
 dequeueQueue q = case uncons q.front of
@@ -82,7 +85,7 @@ processTweet ref tweet = do
     processed <- Dom.isProcessed tweet.element
     unless processed do
       enqueued <- Ref.modify' (\s ->
-        if s.generation == currentGeneration then
+        if s.generation == currentGeneration && queueSize s.queue < maxQueueSize then
           { state: s { queue = enqueueQueue tweet s.queue }, value: true }
         else
           { state: s, value: false }
