@@ -224,7 +224,8 @@ Init ==
 (* Content Script Actions *)
 
 \* A new tweet is discovered in the DOM.
-\* MEMORY ISSUE: No backpressure - contentQueue grows unbounded by evaluation speed.
+\* Backpressure: contentQueue is capped at MaxQueueLen (code: maxQueueSize in Shared.Constants).
+\* Tweets arriving at capacity are silently dropped; MutationObserver can re-detect them later.
 \* Each entry holds a TweetData record containing an Element DOM reference
 \* (src/shared/Types/Tweet.purs:50-58), preventing GC of off-screen DOM nodes.
 DiscoverTweet(tid) ==

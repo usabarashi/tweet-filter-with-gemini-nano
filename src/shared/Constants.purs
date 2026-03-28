@@ -31,3 +31,6 @@ batchSize = 1
 
 delayBetweenBatches :: Int
 delayBetweenBatches = 100
+
+maxQueueSize :: Int
+maxQueueSize = 50
