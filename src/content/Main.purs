@@ -44,6 +44,7 @@ type ActiveRuntime =
   , urlWatchActiveRef :: Ref.Ref Boolean
   , intervalIdRef :: Ref.Ref (Maybe Int)
   , popstateCleanupRef :: Ref.Ref (Effect Unit)
+  , restartTimeoutRef :: Ref.Ref (Maybe Int)
   }
 
 type ContentScriptState =
@@ -138,10 +139,12 @@ setupUrlChangeDetection
   -> Ref.Ref Boolean
   -> Ref.Ref (Maybe Int)
   -> Ref.Ref (Effect Unit)
+  -> Ref.Ref (Maybe Int)
   -> Effect Unit
-setupUrlChangeDetection loggerRef observerRef cb activeRef intervalIdRef popstateCleanupRef = do
+setupUrlChangeDetection loggerRef observerRef cb activeRef intervalIdRef popstateCleanupRef restartTimeoutRef = do
   EffectUtils.runCleanupRef popstateCleanupRef
   EffectUtils.clearMaybeRef intervalIdRef WebApi.clearInterval
+  EffectUtils.clearMaybeRef restartTimeoutRef WebApi.clearTimeout
 
   currentUrlRef <- WebApi.getLocationHref >>= Ref.new
   let
@@ -154,7 +157,11 @@ setupUrlChangeDetection loggerRef observerRef cb activeRef intervalIdRef popstat
           Logger.log loggerRef ("[Tweet Filter] Page navigation detected: " <> currentUrl <> " -> " <> newUrl)
           Ref.write newUrl currentUrlRef
           TweetObserver.stop observerRef
-          void $ WebApi.setTimeout 500 $ TweetObserver.start observerRef cb
+          EffectUtils.clearMaybeRef restartTimeoutRef WebApi.clearTimeout
+          tid <- WebApi.setTimeout 500 do
+            Ref.write Nothing restartTimeoutRef
+            TweetObserver.start observerRef cb
+          Ref.write (Just tid) restartTimeoutRef
 
   intervalId <- WebApi.setInterval 1000 checkUrlChange
   Ref.write (Just intervalId) intervalIdRef
@@ -253,8 +260,9 @@ ensureActiveRuntime loggerRef activeRuntimeRef = do
       urlWatchActiveRef <- Ref.new false
       intervalIdRef <- Ref.new Nothing
       popstateCleanupRef <- Ref.new (pure unit :: Effect Unit)
+      restartTimeoutRef <- Ref.new Nothing
       let processTweet = TweetFilter.processTweet filterRef
-      let runtime = { filterRef, observerRef, processTweet, urlWatchActiveRef, intervalIdRef, popstateCleanupRef }
+      let runtime = { filterRef, observerRef, processTweet, urlWatchActiveRef, intervalIdRef, popstateCleanupRef, restartTimeoutRef }
       Ref.write (Just runtime) activeRuntimeRef
       pure runtime
 
@@ -265,7 +273,7 @@ disableFiltering activeRuntimeRef retryTimerRef = do
   case mRuntime of
     Nothing -> pure unit
     Just runtime -> do
-      stopUrlWatcher runtime.intervalIdRef runtime.popstateCleanupRef
+      stopUrlWatcher runtime.intervalIdRef runtime.popstateCleanupRef runtime.restartTimeoutRef
       Ref.write false runtime.urlWatchActiveRef
       TweetObserver.stop runtime.observerRef
       TweetFilter.destroy runtime.filterRef
@@ -283,10 +291,11 @@ enableFiltering loggerRef activeRuntimeRef = do
 cancelRetryTimer :: Ref.Ref (Maybe Int) -> Effect Unit
 cancelRetryTimer retryTimerRef = EffectUtils.clearMaybeRef retryTimerRef WebApi.clearTimeout
 
-stopUrlWatcher :: Ref.Ref (Maybe Int) -> Ref.Ref (Effect Unit) -> Effect Unit
-stopUrlWatcher intervalIdRef popstateCleanupRef = do
+stopUrlWatcher :: Ref.Ref (Maybe Int) -> Ref.Ref (Effect Unit) -> Ref.Ref (Maybe Int) -> Effect Unit
+stopUrlWatcher intervalIdRef popstateCleanupRef restartTimeoutRef = do
   EffectUtils.clearMaybeRef intervalIdRef WebApi.clearInterval
   EffectUtils.runCleanupRef popstateCleanupRef
+  EffectUtils.clearMaybeRef restartTimeoutRef WebApi.clearTimeout
 
 restartUrlWatcherIfNeeded :: Ref.Ref Logger.LoggerState -> ActiveRuntime -> Effect Unit
 restartUrlWatcherIfNeeded loggerRef runtime = do
@@ -299,3 +308,4 @@ restartUrlWatcherIfNeeded loggerRef runtime = do
       runtime.urlWatchActiveRef
       runtime.intervalIdRef
       runtime.popstateCleanupRef
+      runtime.restartTimeoutRef
