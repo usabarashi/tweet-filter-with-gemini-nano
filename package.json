@@ -19,7 +19,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "spago": "^1.0.3",
+    "spago": "^1.0.4",
     "vite": "^6.2.0"
   }
 }
