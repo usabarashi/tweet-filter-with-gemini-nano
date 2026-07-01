@@ -28,7 +28,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup PureScript
-        uses: purescript-contrib/setup-purescript@7effce74b49c9325e8ec856b109582b458826eaa # main
+        uses: purescript-contrib/setup-purescript@27b4d58195c470f821f4b7071c5af4e2e483b2c5 # main
         with:
           purescript: '0.15.15'
 
