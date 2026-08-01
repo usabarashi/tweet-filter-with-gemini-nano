@@ -20,6 +20,6 @@
   "license": "MIT",
   "devDependencies": {
     "spago": "^1.0.4",
-    "vite": "^8.0.10"
+    "vite": "^8.1.5"
   }
 }
